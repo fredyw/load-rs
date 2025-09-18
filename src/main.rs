@@ -1,8 +1,8 @@
 use anyhow::Result;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use load_rs::LoadTestRunner;
+use load_rs::{HttpMethod, LoadTestRunner};
 use reqwest::header::HeaderMap;
 
 /// load-rs: A simple load testing tool written in Rust.
@@ -21,7 +21,7 @@ struct Args {
     concurrency: u32,
 
     /// HTTP method to use for the requests.
-    #[arg(short = 'X', long, value_enum, default_value_t = HttpMethod::Get)]
+    #[arg(short = 'X', long, value_parser = parse_http_method, default_value = "get")]
     method: HttpMethod,
 
     /// Custom HTTP header(s) in "key: value" format.
@@ -30,15 +30,16 @@ struct Args {
     header: Vec<String>,
 }
 
-/// Defines the allowed HTTP methods that the user can specify.
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
-enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete,
-    Patch,
-    Head,
+fn parse_http_method(s: &str) -> Result<HttpMethod, String> {
+    match s.to_ascii_lowercase().as_str() {
+        "get" => Ok(HttpMethod::Get),
+        "post" => Ok(HttpMethod::Post),
+        "put" => Ok(HttpMethod::Put),
+        "delete" => Ok(HttpMethod::Delete),
+        "patch" => Ok(HttpMethod::Patch),
+        "head" => Ok(HttpMethod::Head),
+        _ => Err(format!("'{s}' is not a valid HTTP method")),
+    }
 }
 
 fn create_progress_bar(len: u32) -> Result<ProgressBar> {
@@ -60,9 +61,9 @@ async fn main() -> Result<()> {
         args.requests, args.url, args.concurrency
     );
     let pb = create_progress_bar(args.requests)?;
-    let load_test = LoadTestRunner::new(&args.url, args.requests, args.concurrency)?;
-    let result = load_test
-        .run(HeaderMap::new(), |result| {
+    let runner = LoadTestRunner::new(&args.url, args.requests, args.concurrency)?;
+    let result = runner
+        .run(args.method, HeaderMap::new(), |result| {
             pb.set_message(format!(
                 "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
                 style(result.success).green(),

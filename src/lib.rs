@@ -19,6 +19,17 @@ pub struct LoadTestRunner {
     client: Client,
 }
 
+/// Defines the allowed HTTP methods that the user can specify.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Delete,
+    Patch,
+    Head,
+}
+
 /// Represents the aggregated results of a load test run.
 #[derive(Debug, Clone)]
 pub struct LoadTestResult {
@@ -95,6 +106,7 @@ impl LoadTestRunner {
     ///
     /// # Parameters
     ///
+    /// * `method`: HTTP method (GET, POST, etc.) to use.
     /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
     ///   each request.
     /// * `in_progress`: A callback function that is invoked after each request completes.
@@ -105,7 +117,12 @@ impl LoadTestRunner {
     ///
     /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`
     /// with the complete summary of the test run.
-    pub async fn run<T>(&self, header: HeaderMap, in_progress: T) -> Result<LoadTestResult>
+    pub async fn run<T>(
+        &self,
+        method: HttpMethod,
+        header: HeaderMap,
+        in_progress: T,
+    ) -> Result<LoadTestResult>
     where
         T: Fn(&LoadTestResult),
     {
@@ -114,7 +131,14 @@ impl LoadTestRunner {
                 let header = header.clone();
                 async move {
                     let start_time = Instant::now();
-                    let response = self.get(header).await;
+                    let response = match method {
+                        HttpMethod::Get => self.get(header).await,
+                        HttpMethod::Post => self.post(header).await,
+                        HttpMethod::Put => self.put(header).await,
+                        HttpMethod::Delete => self.delete(header).await,
+                        HttpMethod::Patch => self.patch(header).await,
+                        HttpMethod::Head => self.head(header).await,
+                    };
                     let duration = start_time.elapsed();
                     (response, duration)
                 }
@@ -127,7 +151,7 @@ impl LoadTestRunner {
             match res {
                 Ok(_) => {
                     result.success += 1;
-                    // Only capture the duration for the successful request.
+                    // Only capture the duration for successful request.
                     result.total_duration += duration;
                     result.avg = result.total_duration / result.completed;
                     result.durations.push(duration);
@@ -175,5 +199,25 @@ impl LoadTestRunner {
             .send()
             .await?
             .error_for_status()?)
+    }
+
+    async fn post(&self, headers: HeaderMap) -> Result<Response> {
+        todo!("Not implemented yet")
+    }
+
+    async fn put(&self, headers: HeaderMap) -> Result<Response> {
+        todo!("Not implemented yet")
+    }
+
+    async fn delete(&self, headers: HeaderMap) -> Result<Response> {
+        todo!("Not implemented yet")
+    }
+
+    async fn patch(&self, headers: HeaderMap) -> Result<Response> {
+        todo!("Not implemented yet")
+    }
+
+    async fn head(&self, headers: HeaderMap) -> Result<Response> {
+        todo!("Not implemented yet")
     }
 }
