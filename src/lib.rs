@@ -218,6 +218,12 @@ impl LoadTestRunner {
     }
 
     async fn head(&self, headers: HeaderMap) -> Result<Response> {
-        todo!("Not implemented yet")
+        Ok(self
+            .client
+            .head(&self.url)
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?)
     }
 }
