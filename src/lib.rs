@@ -2,8 +2,10 @@ use anyhow::Result;
 use bytes::Bytes;
 use futures::{StreamExt, stream};
 use reqwest::header::HeaderMap;
-use reqwest::{Client, Response};
+use reqwest::{Certificate, Client, Identity, Response};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use tokio::fs;
 
 /// A load test runner responsible for configuring and executing a load test.
 #[derive(Debug, Clone)]
@@ -17,6 +19,7 @@ pub struct LoadTestRunner {
     /// Number of concurrent requests to run at a time.
     pub concurrency: u32,
 
+    /// HTTP client.
     client: Client,
 }
 
@@ -87,15 +90,34 @@ impl LoadTestRunner {
     /// * `url`: Target URL to send requests to.
     /// * `requests`: Total number of requests to send.
     /// * `concurrency`: Number of concurrent requests to run at a time.
+    /// * `ca_cert`: Custom CA certificate file (PEM format).
+    /// * `cert`: Public certificate file (PEM format).
+    /// * `key`: Private key file (PEM format).
     ///
     /// # Returns
     /// A `Result` containing the new `LoadTestRunner` instance if successful.
-    pub fn new(url: &str, requests: u32, concurrency: u32) -> Result<Self> {
+    pub async fn new(
+        url: &str,
+        requests: u32,
+        concurrency: u32,
+        ca_cert: &Option<PathBuf>,
+        cert: &Option<PathBuf>,
+        key: &Option<PathBuf>,
+    ) -> Result<Self> {
+        let mut builder = Client::builder().use_rustls_tls();
+        if let Some(ca_cert_path) = ca_cert {
+            let bytes = fs::read(ca_cert_path).await?;
+            let ca_cert_bytes = Certificate::from_pem(&bytes)?;
+            builder = builder.add_root_certificate(ca_cert_bytes);
+        }
+        if let (Some(cert_path), Some(key_path)) = (cert, key) {
+            builder = builder.identity(Self::create_identity(cert_path, key_path).await?);
+        }
         Ok(LoadTestRunner {
             url: url.to_owned(),
             requests,
             concurrency,
-            client: Client::builder().use_rustls_tls().build()?,
+            client: builder.build()?,
         })
     }
 
@@ -192,6 +214,14 @@ impl LoadTestRunner {
         };
 
         Ok(result)
+    }
+
+    async fn create_identity(cert: &PathBuf, key: &PathBuf) -> Result<Identity> {
+        let cert_bytes = tokio::fs::read(cert).await?;
+        let key_bytes = tokio::fs::read(key).await?;
+        let mut pem_bytes = cert_bytes;
+        pem_bytes.extend_from_slice(&key_bytes);
+        Ok(Identity::from_pem(&pem_bytes)?)
     }
 
     async fn get(&self, headers: HeaderMap) -> Result<Response> {

@@ -27,8 +27,7 @@ struct Args {
     #[arg(short = 'X', long, value_parser = parse_http_method, default_value = "get")]
     method: HttpMethod,
 
-    /// Custom HTTP header(s) in "key: value" format.
-    /// This flag can be specified multiple times to add multiple headers.
+    /// Custom HTTP header(s) in "key: value" format. Can be repeated.
     #[arg(short = 'H', long, action = clap::ArgAction::Append)]
     header: Vec<String>,
 
@@ -39,6 +38,18 @@ struct Args {
     /// File to read the request body from.
     #[arg(short = 'D', long = "data-file", group = "request_body")]
     data_file: Option<PathBuf>,
+
+    /// Custom CA certificate file (PEM format).
+    #[arg(short = 'C', long = "cacert")]
+    ca_cert: Option<PathBuf>,
+
+    /// Public certificate file (PEM format).
+    #[arg(short = 'E', long = "cert", requires = "key")]
+    cert: Option<PathBuf>,
+
+    /// Private key file (PEM format).
+    #[arg(short = 'k', long = "key", requires = "cert")]
+    key: Option<PathBuf>,
 }
 
 fn parse_http_method(s: &str) -> Result<HttpMethod, String> {
@@ -97,7 +108,15 @@ async fn main() -> Result<()> {
         args.requests, args.url, args.concurrency
     );
     let pb = create_progress_bar(args.requests)?;
-    let runner = LoadTestRunner::new(&args.url, args.requests, args.concurrency)?;
+    let runner = LoadTestRunner::new(
+        &args.url,
+        args.requests,
+        args.concurrency,
+        &args.ca_cert,
+        &args.cert,
+        &args.key,
+    )
+    .await?;
     let result = runner
         .run(
             args.method,
