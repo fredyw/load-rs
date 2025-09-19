@@ -1,12 +1,12 @@
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use load_rs::{HttpMethod, LoadTestRunner};
+use load_rs::{Body, HttpMethod, LoadTestRunner};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::path::PathBuf;
 use std::str::FromStr;
-use tokio::fs;
 
 /// load-rs: A simple load testing tool written in Rust.
 #[derive(Parser, Debug)]
@@ -38,6 +38,10 @@ struct Args {
     /// File to read the request body from.
     #[arg(short = 'D', long = "data-file", group = "request_body")]
     data_file: Option<PathBuf>,
+
+    /// Directory of files to use as request bodies.
+    #[arg(short = 'i', long = "data-dir", group = "request_body")]
+    data_dir: Option<PathBuf>,
 
     /// Custom CA certificate file (PEM format).
     #[arg(short = 'C', long = "cacert")]
@@ -82,14 +86,13 @@ fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
         .collect()
 }
 
-async fn to_data(args: &Args) -> Result<bytes::Bytes> {
+fn to_body(args: &Args) -> Body {
     if let Some(data) = &args.data {
-        Ok(data.to_owned().into())
+        Body::Data(data.to_owned().into())
     } else if let Some(data_file) = &args.data_file {
-        let data = fs::read(data_file).await?;
-        Ok(data.into())
+        Body::DataFile(data_file.to_owned())
     } else {
-        Ok(bytes::Bytes::new())
+        Body::Data(Bytes::new())
     }
 }
 
@@ -126,7 +129,7 @@ async fn main() -> Result<()> {
         .run(
             args.method,
             to_header_map(&args.header)?,
-            to_data(&args).await?,
+            to_body(&args),
             |result| {
                 pb.set_message(format!(
                     "\nSuccess: {} | Failures: {} | Avg: {:.2?}",

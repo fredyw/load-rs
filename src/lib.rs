@@ -82,6 +82,18 @@ impl LoadTestResult {
     }
 }
 
+/// Represents the source for the HTTP request body or bodies.
+///
+/// This enum allows for specifying the body data directly as a string, from a single file, or from
+/// a directory containing multiple files to be used in multiple requests.
+pub enum Body {
+    /// The request body is provided directly as an in-memory byte slice.
+    Data(Bytes),
+
+    /// The request body will be read from a single specified file.
+    DataFile(PathBuf),
+}
+
 impl LoadTestRunner {
     /// Creates a new `LoadTestRunner` with the specified configuration.
     ///
@@ -147,12 +159,13 @@ impl LoadTestRunner {
         &self,
         method: HttpMethod,
         header: HeaderMap,
-        body: Bytes,
+        body: Body,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
         T: Fn(&LoadTestResult),
     {
+        let body = self.to_bytes(&body).await?;
         let mut stream = stream::iter(0..self.requests as u64)
             .map(|_| {
                 let header = header.clone();
@@ -217,6 +230,16 @@ impl LoadTestRunner {
         };
 
         Ok(result)
+    }
+
+    async fn to_bytes(&self, body: &Body) -> Result<Bytes> {
+        match body {
+            Body::Data(data) => Ok(data.clone()),
+            Body::DataFile(data_file) => {
+                let data = fs::read(data_file).await?;
+                Ok(data.into())
+            }
+        }
     }
 
     async fn create_identity(cert: &PathBuf, key: &PathBuf) -> Result<Identity> {
