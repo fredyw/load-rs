@@ -1,9 +1,10 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use load_rs::{HttpMethod, LoadTestRunner};
-use reqwest::header::HeaderMap;
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use std::str::FromStr;
 
 /// load-rs: A simple load testing tool written in Rust.
 #[derive(Parser, Debug)]
@@ -28,6 +29,10 @@ struct Args {
     /// This flag can be specified multiple times to add multiple headers.
     #[arg(short = 'H', long, action = clap::ArgAction::Append)]
     header: Vec<String>,
+
+    /// Request body data. Used for methods like POST, PUT, PATCH, and DELETE.
+    #[arg(short = 'd', long)]
+    data: Option<String>,
 }
 
 fn parse_http_method(s: &str) -> Result<HttpMethod, String> {
@@ -40,6 +45,20 @@ fn parse_http_method(s: &str) -> Result<HttpMethod, String> {
         "head" => Ok(HttpMethod::Head),
         _ => Err(format!("'{s}' is not a valid HTTP method")),
     }
+}
+
+fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
+    headers
+        .iter()
+        .map(|header| {
+            let (key, value) = header
+                .split_once(':')
+                .context(format!("Invalid header format: {header}"))?;
+            let name = HeaderName::from_str(key.trim())?;
+            let value = HeaderValue::from_str(value.trim())?;
+            Ok((name, value))
+        })
+        .collect()
 }
 
 fn create_progress_bar(len: u32) -> Result<ProgressBar> {
@@ -63,15 +82,20 @@ async fn main() -> Result<()> {
     let pb = create_progress_bar(args.requests)?;
     let runner = LoadTestRunner::new(&args.url, args.requests, args.concurrency)?;
     let result = runner
-        .run(args.method, HeaderMap::new(), |result| {
-            pb.set_message(format!(
-                "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
-                style(result.success).green(),
-                style(result.failures).red(),
-                result.avg
-            ));
-            pb.inc(1);
-        })
+        .run(
+            args.method,
+            to_header_map(&args.header)?,
+            args.data.unwrap_or("".into()).into(),
+            |result| {
+                pb.set_message(format!(
+                    "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
+                    style(result.success).green(),
+                    style(result.failures).red(),
+                    result.avg
+                ));
+                pb.inc(1);
+            },
+        )
         .await?;
     pb.finish_with_message(format!(
         "✅ Done!\nSuccess: {} | Failures: {} | Avg: {:.2?} | P50: {:.2?} | P90: {:.2?} | P95: {:.2?}",

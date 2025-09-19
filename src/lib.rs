@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bytes::Bytes;
 use futures::{StreamExt, stream};
 use reqwest::header::HeaderMap;
 use reqwest::{Client, Response};
@@ -121,6 +122,7 @@ impl LoadTestRunner {
         &self,
         method: HttpMethod,
         header: HeaderMap,
+        body: Bytes,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -129,14 +131,15 @@ impl LoadTestRunner {
         let mut stream = stream::iter(0..self.requests as u64)
             .map(|_| {
                 let header = header.clone();
+                let body = body.clone();
                 async move {
                     let start_time = Instant::now();
                     let response = match method {
                         HttpMethod::Get => self.get(header).await,
-                        HttpMethod::Post => self.post(header).await,
-                        HttpMethod::Put => self.put(header).await,
-                        HttpMethod::Delete => self.delete(header).await,
-                        HttpMethod::Patch => self.patch(header).await,
+                        HttpMethod::Post => self.post(header, body).await,
+                        HttpMethod::Put => self.put(header, body).await,
+                        HttpMethod::Delete => self.delete(header, body).await,
+                        HttpMethod::Patch => self.patch(header, body).await,
                         HttpMethod::Head => self.head(header).await,
                     };
                     let duration = start_time.elapsed();
@@ -201,20 +204,48 @@ impl LoadTestRunner {
             .error_for_status()?)
     }
 
-    async fn post(&self, headers: HeaderMap) -> Result<Response> {
-        todo!("Not implemented yet")
+    async fn post(&self, headers: HeaderMap, body: Bytes) -> Result<Response> {
+        Ok(self
+            .client
+            .post(&self.url)
+            .headers(headers)
+            .body(body.clone())
+            .send()
+            .await?
+            .error_for_status()?)
     }
 
-    async fn put(&self, headers: HeaderMap) -> Result<Response> {
-        todo!("Not implemented yet")
+    async fn put(&self, headers: HeaderMap, body: Bytes) -> Result<Response> {
+        Ok(self
+            .client
+            .put(&self.url)
+            .headers(headers)
+            .body(body.clone())
+            .send()
+            .await?
+            .error_for_status()?)
     }
 
-    async fn delete(&self, headers: HeaderMap) -> Result<Response> {
-        todo!("Not implemented yet")
+    async fn delete(&self, headers: HeaderMap, body: Bytes) -> Result<Response> {
+        Ok(self
+            .client
+            .delete(&self.url)
+            .headers(headers)
+            .body(body.clone())
+            .send()
+            .await?
+            .error_for_status()?)
     }
 
-    async fn patch(&self, headers: HeaderMap) -> Result<Response> {
-        todo!("Not implemented yet")
+    async fn patch(&self, headers: HeaderMap, body: Bytes) -> Result<Response> {
+        Ok(self
+            .client
+            .patch(&self.url)
+            .headers(headers)
+            .body(body.clone())
+            .send()
+            .await?
+            .error_for_status()?)
     }
 
     async fn head(&self, headers: HeaderMap) -> Result<Response> {
