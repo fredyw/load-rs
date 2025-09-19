@@ -103,8 +103,11 @@ impl LoadTestRunner {
         ca_cert: &Option<PathBuf>,
         cert: &Option<PathBuf>,
         key: &Option<PathBuf>,
+        insecure: bool,
     ) -> Result<Self> {
-        let mut builder = Client::builder().use_rustls_tls();
+        let mut builder = Client::builder()
+            .use_rustls_tls()
+            .danger_accept_invalid_certs(insecure);
         if let Some(ca_cert_path) = ca_cert {
             let bytes = fs::read(ca_cert_path).await?;
             let ca_cert_bytes = Certificate::from_pem(&bytes)?;

@@ -50,6 +50,10 @@ struct Args {
     /// Private key file (PEM format).
     #[arg(short = 'k', long = "key", requires = "cert")]
     key: Option<PathBuf>,
+
+    /// Allows insecure connections by skipping TLS certificate verification.
+    #[arg(short = 'I', long)]
+    insecure: bool,
 }
 
 fn parse_http_method(s: &str) -> Result<HttpMethod, String> {
@@ -115,6 +119,7 @@ async fn main() -> Result<()> {
         &args.ca_cert,
         &args.cert,
         &args.key,
+        args.insecure,
     )
     .await?;
     let result = runner
