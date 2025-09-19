@@ -4,7 +4,9 @@ use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use load_rs::{HttpMethod, LoadTestRunner};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use std::path::PathBuf;
 use std::str::FromStr;
+use tokio::fs;
 
 /// load-rs: A simple load testing tool written in Rust.
 #[derive(Parser, Debug)]
@@ -30,9 +32,13 @@ struct Args {
     #[arg(short = 'H', long, action = clap::ArgAction::Append)]
     header: Vec<String>,
 
-    /// Request body data. Used for methods like POST, PUT, PATCH, and DELETE.
-    #[arg(short = 'd', long)]
+    /// Request body as a string.
+    #[arg(short = 'd', long, group = "request_body")]
     data: Option<String>,
+
+    /// File to read the request body from.
+    #[arg(short = 'D', long = "data-file", group = "request_body")]
+    data_file: Option<PathBuf>,
 }
 
 fn parse_http_method(s: &str) -> Result<HttpMethod, String> {
@@ -61,6 +67,17 @@ fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
         .collect()
 }
 
+async fn to_data(args: &Args) -> Result<bytes::Bytes> {
+    if let Some(data) = &args.data {
+        Ok(data.to_owned().into())
+    } else if let Some(data_file) = &args.data_file {
+        let data = fs::read(data_file).await?;
+        Ok(data.into())
+    } else {
+        Ok(bytes::Bytes::new())
+    }
+}
+
 fn create_progress_bar(len: u32) -> Result<ProgressBar> {
     let pb = ProgressBar::new(len as u64);
     pb.set_style(
@@ -85,7 +102,7 @@ async fn main() -> Result<()> {
         .run(
             args.method,
             to_header_map(&args.header)?,
-            args.data.unwrap_or("".into()).into(),
+            to_data(&args).await?,
             |result| {
                 pb.set_message(format!(
                     "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
