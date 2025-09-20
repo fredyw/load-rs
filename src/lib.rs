@@ -263,7 +263,7 @@ impl LoadTestRunner {
         let mut random = rand::rng();
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
-                let header = header.clone().unwrap_or(HeaderMap::new());
+                let header = header.clone().unwrap_or_default();
                 let index = match order {
                     Order::Sequential => i as usize % filenames.len(),
                     Order::Random => random.random_range(0..filenames.len()),
