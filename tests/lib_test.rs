@@ -177,6 +177,142 @@ async fn run_delete() {
 }
 
 #[tokio::test]
+async fn run_from_dir_post_sequential() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        5,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Post,
+            Some(headers),
+            &"tests/test_requests".into(),
+            Order::Sequential,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 5);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 5);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_dir_put_sequential() {
+    let runner = LoadTestRunner::new("https://mockhttp.org/put", 5, 2, &None, &None, &None, &None)
+        .await
+        .unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Put,
+            Some(headers),
+            &"tests/test_requests".into(),
+            Order::Sequential,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 5);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 5);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_dir_patch_sequential() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/patch",
+        5,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Patch,
+            Some(headers),
+            &"tests/test_requests".into(),
+            Order::Sequential,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 5);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 5);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_dir_delete_sequential() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/delete",
+        5,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Delete,
+            Some(headers),
+            &"tests/test_requests".into(),
+            Order::Sequential,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 5);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 5);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
 async fn run_from_dir_post_random() {
     let runner = LoadTestRunner::new(
         "https://mockhttp.org/post",
@@ -306,6 +442,150 @@ async fn run_from_dir_delete_random() {
     assert_eq!(result.success, 5);
     assert_eq!(result.failures, 0);
     assert_eq!(result.completed, 5);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_dir_requests_less_than_files_sequential() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        3,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Post,
+            Some(headers),
+            &"tests/test_requests".into(),
+            Order::Sequential,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 3);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 3);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_dir_requests_greater_than_files_sequential() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        7,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Post,
+            Some(headers),
+            &"tests/test_requests".into(),
+            Order::Sequential,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 7);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 7);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_dir_requests_less_than_files_random() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        3,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Post,
+            Some(headers),
+            &"tests/test_requests".into(),
+            Order::Random,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 3);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 3);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_dir_requests_greater_than_files_random() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        7,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Post,
+            Some(headers),
+            &"tests/test_requests".into(),
+            Order::Random,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 7);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 7);
     assert!(result.p50 > Default::default());
     assert!(result.p90 > Default::default());
     assert!(result.p95 > Default::default());
