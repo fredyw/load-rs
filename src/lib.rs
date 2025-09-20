@@ -455,7 +455,6 @@ impl LoadTestRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     #[tokio::test]
     async fn new_succeeds() {
@@ -570,20 +569,19 @@ mod tests {
 
     #[tokio::test]
     async fn get_filenames_succeeds() {
-        let mut filenames =
-            LoadTestRunner::get_filenames(&Path::new("tests/test_requests").to_path_buf())
-                .await
-                .unwrap();
+        let mut filenames = LoadTestRunner::get_filenames(&"tests/test_requests".into())
+            .await
+            .unwrap();
         filenames.sort();
 
         assert_eq!(
             filenames,
             vec![
-                Path::new("tests/test_requests/test1.json").to_path_buf(),
-                Path::new("tests/test_requests/test2.json").to_path_buf(),
-                Path::new("tests/test_requests/test3.json").to_path_buf(),
-                Path::new("tests/test_requests/test4.json").to_path_buf(),
-                Path::new("tests/test_requests/test5.json").to_path_buf(),
+                PathBuf::from("tests/test_requests/test1.json"),
+                "tests/test_requests/test2.json".into(),
+                "tests/test_requests/test3.json".into(),
+                "tests/test_requests/test4.json".into(),
+                "tests/test_requests/test5.json".into(),
             ]
         );
     }
