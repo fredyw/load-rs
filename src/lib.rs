@@ -147,6 +147,8 @@ impl LoadTestRunner {
     /// * `method`: HTTP method (GET, POST, etc.) to use.
     /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
     ///   each request.
+    /// * `body`: Request body. It can be in-memory byte slice or a file that contains a request
+    ///    body.
     /// * `in_progress`: A callback function that is invoked after each request completes.
     ///   It receives a reference to the `LoadTestResult` struct, allowing for real-time progress
     ///   reporting.
@@ -188,6 +190,27 @@ impl LoadTestRunner {
         self.process_stream(stream, in_progress).await
     }
 
+    /// Executes the load test with request bodies from files in a directory and streams progress
+    /// updates via a callback.
+    ///
+    /// This is the main method for running the test. It sends the configured number of requests
+    /// concurrently to the target URL. After each request completes, it invokes the `in_progress`
+    /// callback with the current, cumulative statistics.
+    ///
+    /// # Parameters
+    ///
+    /// * `method`: HTTP method (GET, POST, etc.) to use.
+    /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
+    ///   each request.
+    /// * `data_dir`: Directory of files to use as request bodies.
+    /// * `in_progress`: A callback function that is invoked after each request completes.
+    ///   It receives a reference to the `LoadTestResult` struct, allowing for real-time progress
+    ///   reporting.
+    ///
+    /// # Returns
+    ///
+    /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`
+    /// with the complete summary of the test run.
     pub async fn run_from_dir<T>(
         &self,
         method: HttpMethod,
@@ -201,7 +224,9 @@ impl LoadTestRunner {
         if method == HttpMethod::Get || method == HttpMethod::Head {
             bail!("HTTP method '{:?}' not supported", method);
         }
-        let filenames = self.get_filenames(data_dir).await?;
+        let mut filenames = self.get_filenames(data_dir).await?;
+        // Sort the file names to make it deterministic.
+        filenames.sort();
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
                 let header = header.clone();
