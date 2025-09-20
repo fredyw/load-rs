@@ -1,4 +1,4 @@
-name: Rust
+name: load-rs
 on:
   push:
     branches: [ "main" ]
@@ -12,6 +12,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      run: ./build.sh
+    - name: Check
+      run: ./check.sh
+    - name: Test
+      run: ./test.sh
