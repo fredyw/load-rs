@@ -117,6 +117,9 @@ impl LoadTestRunner {
         key: &Option<PathBuf>,
         insecure: bool,
     ) -> Result<Self> {
+        if concurrency > requests {
+            bail!("Concurrency: {concurrency} must be <= number of requests: {requests}");
+        }
         let mut builder = Client::builder()
             .use_rustls_tls()
             .danger_accept_invalid_certs(insecure);
@@ -148,7 +151,7 @@ impl LoadTestRunner {
     /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
     ///   each request.
     /// * `body`: Request body. It can be in-memory byte slice or a file that contains a request
-    ///    body.
+    ///   body.
     /// * `in_progress`: A callback function that is invoked after each request completes.
     ///   It receives a reference to the `LoadTestResult` struct, allowing for real-time progress
     ///   reporting.
