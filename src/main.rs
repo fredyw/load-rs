@@ -63,7 +63,7 @@ struct Args {
     #[arg(short = 'O', long, value_parser = parse_order, default_value = "sequential", requires = "data_dir")]
     order: Order,
 
-    /// Performs a single request and dumps the request and response.
+    /// Performs a single request and dumps the response.
     #[arg(short = 'G', long)]
     debug: bool,
 }
@@ -123,24 +123,12 @@ fn create_progress_bar(len: u32) -> Result<ProgressBar> {
     Ok(pb)
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let args = Args::parse();
+async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
     println!(
         "🚀🚀🚀 Sending {} requests to {} with {} concurrency 🚀🚀🚀",
         args.requests, args.url, args.concurrency
     );
     let pb = create_progress_bar(args.requests)?;
-    let runner = LoadTestRunner::new(
-        &args.url,
-        args.requests,
-        args.concurrency,
-        &args.ca_cert,
-        &args.cert,
-        &args.key,
-        &args.insecure,
-    )
-    .await?;
     let result = if let Some(data_dir) = &args.data_dir {
         runner
             .run_from_dir(
@@ -164,7 +152,7 @@ async fn main() -> Result<()> {
             .run(
                 args.method,
                 Some(to_header_map(&args.header)?),
-                Some(to_body(&args)),
+                Some(to_body(args)),
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
@@ -181,5 +169,44 @@ async fn main() -> Result<()> {
         "✅ Done!\nSuccess: {} | Failures: {} | Avg: {:.2?} | P50: {:.2?} | P90: {:.2?} | P95: {:.2?}",
         style(result.success).green(), style(result.failures).red(), result.avg, result.p50, result.p90, result.p95
     ));
+    Ok(())
+}
+
+async fn debug(runner: &LoadTestRunner, args: &Args) -> Result<()> {
+    let response = runner
+        .debug(
+            args.method,
+            Some(to_header_map(&args.header)?),
+            Some(to_body(args)),
+        )
+        .await?;
+    println!("{:?} {}", response.version(), response.status());
+    for (name, value) in response.headers() {
+        println!("{}: {}", name, value.to_str().unwrap_or(""));
+    }
+    println!();
+    let body = response.text().await?;
+    println!("{body}");
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let args = Args::parse();
+    let runner = LoadTestRunner::new(
+        &args.url,
+        args.requests,
+        args.concurrency,
+        &args.ca_cert,
+        &args.cert,
+        &args.key,
+        &args.insecure,
+    )
+    .await?;
+    if args.debug {
+        debug(&runner, &args).await?;
+    } else {
+        run(&runner, &args).await?;
+    }
     Ok(())
 }

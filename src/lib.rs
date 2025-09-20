@@ -96,7 +96,7 @@ pub enum Body {
 }
 
 /// Specifies the order in which to process request body files from a directory.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Order {
     /// Process files in alphabetical order (default).
     Sequential,
@@ -290,7 +290,7 @@ impl LoadTestRunner {
         self.process_stream(stream, in_progress).await
     }
 
-    /// Executes a single request and dumps the request and response.
+    /// Executes a single request for debugging.
     ///
     /// # Parameters
     ///
