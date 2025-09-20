@@ -206,12 +206,12 @@ impl LoadTestRunner {
                 async move {
                     let start_time = Instant::now();
                     let response = match method {
-                        HttpMethod::Get => self.get(header).await,
-                        HttpMethod::Post => self.post(header, body).await,
-                        HttpMethod::Put => self.put(header, body).await,
-                        HttpMethod::Delete => self.delete(header, body).await,
-                        HttpMethod::Patch => self.patch(header, body).await,
-                        HttpMethod::Head => self.head(header).await,
+                        HttpMethod::Get => self.get(header, true).await,
+                        HttpMethod::Head => self.head(header, true).await,
+                        HttpMethod::Post => self.post(header, body, true).await,
+                        HttpMethod::Put => self.put(header, body, true).await,
+                        HttpMethod::Delete => self.delete(header, body, true).await,
+                        HttpMethod::Patch => self.patch(header, body, true).await,
                     };
                     let duration = start_time.elapsed();
                     (response, duration)
@@ -276,10 +276,10 @@ impl LoadTestRunner {
                     };
                     let start_time = Instant::now();
                     let response = match method {
-                        HttpMethod::Post => self.post(header, body).await,
-                        HttpMethod::Put => self.put(header, body).await,
-                        HttpMethod::Delete => self.delete(header, body).await,
-                        HttpMethod::Patch => self.patch(header, body).await,
+                        HttpMethod::Post => self.post(header, body, true).await,
+                        HttpMethod::Put => self.put(header, body, true).await,
+                        HttpMethod::Delete => self.delete(header, body, true).await,
+                        HttpMethod::Patch => self.patch(header, body, true).await,
                         _ => panic!("Unexpected HTTP method '{method:?}'"),
                     };
                     let duration = start_time.elapsed();
@@ -288,6 +288,37 @@ impl LoadTestRunner {
             })
             .buffer_unordered(self.concurrency as usize);
         self.process_stream(stream, in_progress).await
+    }
+
+    /// Executes a single request and dumps the request and response.
+    ///
+    /// # Parameters
+    ///
+    /// * `method`: HTTP method (GET, POST, etc.) to use.
+    /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
+    ///   each request.
+    /// * `body`: Request body. It can be in-memory byte slice or a file that contains a request
+    ///   body.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing `reqwest::Response`.
+    pub async fn debug(
+        &self,
+        method: HttpMethod,
+        header: Option<HeaderMap>,
+        body: Option<Body>,
+    ) -> Result<Response> {
+        let header = header.unwrap_or_default();
+        let body = Self::get_data(&body.unwrap_or(Body::Data(Bytes::new()))).await?;
+        match method {
+            HttpMethod::Get => self.get(header, false).await,
+            HttpMethod::Post => self.post(header, body, false).await,
+            HttpMethod::Put => self.put(header, body, false).await,
+            HttpMethod::Delete => self.delete(header, body, false).await,
+            HttpMethod::Patch => self.patch(header, body, false).await,
+            HttpMethod::Head => self.head(header, false).await,
+        }
     }
 
     async fn create_identity(cert: &PathBuf, key: &PathBuf) -> Result<Identity> {
@@ -376,68 +407,102 @@ impl LoadTestRunner {
         Ok(result)
     }
 
-    async fn get(&self, headers: HeaderMap) -> Result<Response> {
-        Ok(self
-            .client
-            .get(&self.url)
-            .headers(headers)
-            .send()
-            .await?
-            .error_for_status()?)
+    async fn get(&self, headers: HeaderMap, error_for_status: bool) -> Result<Response> {
+        let response = self.client.get(&self.url).headers(headers).send().await?;
+        Ok(if error_for_status {
+            response.error_for_status()?
+        } else {
+            response
+        })
     }
 
-    async fn post(&self, headers: HeaderMap, body: Bytes) -> Result<Response> {
-        Ok(self
+    async fn post(
+        &self,
+        headers: HeaderMap,
+        body: Bytes,
+        error_for_status: bool,
+    ) -> Result<Response> {
+        let response = self
             .client
             .post(&self.url)
             .headers(headers)
             .body(body.clone())
             .send()
-            .await?
-            .error_for_status()?)
+            .await?;
+        Ok(if error_for_status {
+            response.error_for_status()?
+        } else {
+            response
+        })
     }
 
-    async fn put(&self, headers: HeaderMap, body: Bytes) -> Result<Response> {
-        Ok(self
+    async fn put(
+        &self,
+        headers: HeaderMap,
+        body: Bytes,
+        error_for_status: bool,
+    ) -> Result<Response> {
+        let response = self
             .client
             .put(&self.url)
             .headers(headers)
             .body(body.clone())
             .send()
-            .await?
-            .error_for_status()?)
+            .await?;
+        Ok(if error_for_status {
+            response.error_for_status()?
+        } else {
+            response
+        })
     }
 
-    async fn delete(&self, headers: HeaderMap, body: Bytes) -> Result<Response> {
-        Ok(self
+    async fn delete(
+        &self,
+        headers: HeaderMap,
+        body: Bytes,
+        error_for_status: bool,
+    ) -> Result<Response> {
+        let response = self
             .client
             .delete(&self.url)
             .headers(headers)
             .body(body.clone())
             .send()
-            .await?
-            .error_for_status()?)
+            .await?;
+        Ok(if error_for_status {
+            response.error_for_status()?
+        } else {
+            response
+        })
     }
 
-    async fn patch(&self, headers: HeaderMap, body: Bytes) -> Result<Response> {
-        Ok(self
+    async fn patch(
+        &self,
+        headers: HeaderMap,
+        body: Bytes,
+        error_for_status: bool,
+    ) -> Result<Response> {
+        let response = self
             .client
             .patch(&self.url)
             .headers(headers)
             .body(body.clone())
             .send()
-            .await?
-            .error_for_status()?)
+            .await?;
+        Ok(if error_for_status {
+            response.error_for_status()?
+        } else {
+            response
+        })
     }
 
-    async fn head(&self, headers: HeaderMap) -> Result<Response> {
-        Ok(self
-            .client
-            .head(&self.url)
-            .headers(headers)
-            .send()
-            .await?
-            .error_for_status()?)
+    async fn head(&self, headers: HeaderMap, error_for_status: bool) -> Result<Response> {
+        let response = self.client.head(&self.url).headers(headers).send().await?;
+        Ok(if error_for_status {
+            response.error_for_status()?
+        } else {
+            response
+        })
     }
 
     fn get_quantiles(durations: &mut [Duration], quantiles: &[f64]) -> Vec<Duration> {

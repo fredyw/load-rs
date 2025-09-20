@@ -62,6 +62,10 @@ struct Args {
     /// Order to process files from --data-dir.
     #[arg(short = 'O', long, value_parser = parse_order, default_value = "sequential", requires = "data_dir")]
     order: Order,
+
+    /// Performs a single request and dumps the request and response.
+    #[arg(short = 'G', long)]
+    debug: bool,
 }
 
 fn parse_http_method(s: &str) -> Result<HttpMethod> {
