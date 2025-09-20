@@ -143,7 +143,7 @@ async fn main() -> Result<()> {
                 args.method,
                 to_header_map(&args.header)?,
                 data_dir,
-                args.orderit st,
+                args.order,
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
