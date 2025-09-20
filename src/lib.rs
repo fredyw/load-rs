@@ -1,6 +1,6 @@
-use anyhow::Result;
+use anyhow::{Result, bail};
 use bytes::Bytes;
-use futures::{StreamExt, stream};
+use futures::{Stream, StreamExt, stream};
 use reqwest::header::HeaderMap;
 use reqwest::{Certificate, Client, Identity, Response};
 use std::path::PathBuf;
@@ -166,7 +166,7 @@ impl LoadTestRunner {
         T: Fn(&LoadTestResult),
     {
         let body = self.to_bytes(&body).await?;
-        let mut stream = stream::iter(0..self.requests as u64)
+        let stream = stream::iter(0..self.requests as u64)
             .map(|_| {
                 let header = header.clone();
                 let body = body.clone();
@@ -185,7 +185,83 @@ impl LoadTestRunner {
                 }
             })
             .buffer_unordered(self.concurrency as usize);
+        self.process_stream(stream, in_progress).await
+    }
 
+    pub async fn run_from_dir<T>(
+        &self,
+        method: HttpMethod,
+        header: HeaderMap,
+        data_dir: &PathBuf,
+        in_progress: T,
+    ) -> Result<LoadTestResult>
+    where
+        T: Fn(&LoadTestResult),
+    {
+        if method == HttpMethod::Get || method == HttpMethod::Head {
+            bail!("HTTP method '{:?}' not supported", method);
+        }
+        let filenames = self.get_filenames(data_dir).await?;
+        let stream = stream::iter(0..self.requests as u64)
+            .map(|i| {
+                let header = header.clone();
+                let index = i as usize % filenames.len();
+                let path = &filenames[index];
+                async move {
+                    let body = match fs::read(path).await {
+                        Ok(data) => data.into(),
+                        Err(e) => return (Err(e.into()), Duration::default()),
+                    };
+                    let start_time = Instant::now();
+                    let response = match method {
+                        HttpMethod::Post => self.post(header, body).await,
+                        HttpMethod::Put => self.put(header, body).await,
+                        HttpMethod::Delete => self.delete(header, body).await,
+                        HttpMethod::Patch => self.patch(header, body).await,
+                        _ => panic!("Unexpected HTTP method '{method:?}'"),
+                    };
+                    let duration = start_time.elapsed();
+                    (response, duration)
+                }
+            })
+            .buffer_unordered(self.concurrency as usize);
+        self.process_stream(stream, in_progress).await
+    }
+
+    async fn create_identity(cert: &PathBuf, key: &PathBuf) -> Result<Identity> {
+        let cert_bytes = tokio::fs::read(cert).await?;
+        let key_bytes = tokio::fs::read(key).await?;
+        let mut pem_bytes = cert_bytes;
+        pem_bytes.extend_from_slice(&key_bytes);
+        Ok(Identity::from_pem(&pem_bytes)?)
+    }
+
+    async fn to_bytes(&self, body: &Body) -> Result<Bytes> {
+        match body {
+            Body::Data(data) => Ok(data.clone()),
+            Body::DataFile(data_file) => {
+                let data = fs::read(data_file).await?;
+                Ok(data.into())
+            }
+        }
+    }
+
+    async fn get_filenames(&self, dir: &PathBuf) -> Result<Vec<PathBuf>> {
+        let mut filenames: Vec<PathBuf> = Vec::new();
+        let mut read_dir = fs::read_dir(dir).await?;
+        while let Some(entry) = read_dir.next_entry().await? {
+            if entry.file_type().await?.is_file() {
+                filenames.push(entry.path());
+            }
+        }
+        Ok(filenames)
+    }
+
+    async fn process_stream<S, F>(&self, mut stream: S, in_progress: F) -> Result<LoadTestResult>
+    where
+        S: Stream<Item = (Result<Response, anyhow::Error>, Duration)> + Unpin,
+        F: Fn(&LoadTestResult),
+    {
         let mut result = LoadTestResult::new();
         while let Some((res, duration)) = stream.next().await {
             result.completed += 1;
@@ -228,26 +304,7 @@ impl LoadTestRunner {
         } else {
             Duration::new(0, 0)
         };
-
         Ok(result)
-    }
-
-    async fn to_bytes(&self, body: &Body) -> Result<Bytes> {
-        match body {
-            Body::Data(data) => Ok(data.clone()),
-            Body::DataFile(data_file) => {
-                let data = fs::read(data_file).await?;
-                Ok(data.into())
-            }
-        }
-    }
-
-    async fn create_identity(cert: &PathBuf, key: &PathBuf) -> Result<Identity> {
-        let cert_bytes = tokio::fs::read(cert).await?;
-        let key_bytes = tokio::fs::read(key).await?;
-        let mut pem_bytes = cert_bytes;
-        pem_bytes.extend_from_slice(&key_bytes);
-        Ok(Identity::from_pem(&pem_bytes)?)
     }
 
     async fn get(&self, headers: HeaderMap) -> Result<Response> {

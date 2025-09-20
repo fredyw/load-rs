@@ -125,22 +125,41 @@ async fn main() -> Result<()> {
         args.insecure,
     )
     .await?;
-    let result = runner
-        .run(
-            args.method,
-            to_header_map(&args.header)?,
-            to_body(&args),
-            |result| {
-                pb.set_message(format!(
-                    "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
-                    style(result.success).green(),
-                    style(result.failures).red(),
-                    result.avg
-                ));
-                pb.inc(1);
-            },
-        )
-        .await?;
+    let result = if let Some(data_dir) = &args.data_dir {
+        runner
+            .run_from_dir(
+                args.method,
+                to_header_map(&args.header)?,
+                data_dir,
+                |result| {
+                    pb.set_message(format!(
+                        "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
+                        style(result.success).green(),
+                        style(result.failures).red(),
+                        result.avg
+                    ));
+                    pb.inc(1);
+                },
+            )
+            .await?
+    } else {
+        runner
+            .run(
+                args.method,
+                to_header_map(&args.header)?,
+                to_body(&args),
+                |result| {
+                    pb.set_message(format!(
+                        "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
+                        style(result.success).green(),
+                        style(result.failures).red(),
+                        result.avg
+                    ));
+                    pb.inc(1);
+                },
+            )
+            .await?
+    };
     pb.finish_with_message(format!(
         "✅ Done!\nSuccess: {} | Failures: {} | Avg: {:.2?} | P50: {:.2?} | P90: {:.2?} | P95: {:.2?}",
         style(result.success).green(), style(result.failures).red(), result.avg, result.p50, result.p90, result.p95
