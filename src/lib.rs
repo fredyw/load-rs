@@ -360,30 +360,19 @@ impl LoadTestRunner {
             in_progress(&result);
         }
 
-        let (p50, p90, p95) = if !result.durations.is_empty() {
-            result.durations.sort();
-            let p50_index = (result.durations.len() as f64 * 0.50) as usize;
-            let p90_index = (result.durations.len() as f64 * 0.90) as usize;
-            let p95_index = (result.durations.len() as f64 * 0.95) as usize;
-            let p50_val = result.durations.get(p50_index).cloned().unwrap_or_default();
-            let p90_val = result.durations.get(p90_index).cloned().unwrap_or_default();
-            let p95_val = result.durations.get(p95_index).cloned().unwrap_or_default();
-            (p50_val, p90_val, p95_val)
-        } else {
-            (
-                Duration::default(),
-                Duration::default(),
-                Duration::default(),
-            )
-        };
-        result.p50 = p50;
-        result.p90 = p90;
-        result.p95 = p95;
+        if let [p50, p90, p95] =
+            Self::get_quantiles(&mut result.durations, &[0.5, 0.90, 0.95]).as_slice()
+        {
+            result.p50 = *p50;
+            result.p90 = *p90;
+            result.p95 = *p95;
+        }
         result.avg = if self.requests > 0 {
             result.total_duration / self.requests
         } else {
             Duration::new(0, 0)
         };
+
         Ok(result)
     }
 
@@ -449,6 +438,17 @@ impl LoadTestRunner {
             .send()
             .await?
             .error_for_status()?)
+    }
+
+    fn get_quantiles(durations: &mut [Duration], quantiles: &[f64]) -> Vec<Duration> {
+        durations.sort();
+        quantiles
+            .iter()
+            .map(|quantile| {
+                let index = (durations.len() as f64 * quantile) as usize;
+                durations.get(index).cloned().unwrap_or_default()
+            })
+            .collect()
     }
 }
 
@@ -627,5 +627,17 @@ mod tests {
             err.to_string(),
             "Data file 'tests/test_requests' does not exist or is not a file"
         );
+    }
+
+    #[test]
+    fn get_quantiles_succeeds() {
+        let mut durations: Vec<Duration> = (1..=10).map(Duration::from_secs).collect();
+        if let [p50, p90, p95] =
+            LoadTestRunner::get_quantiles(&mut durations, &[0.5, 0.9, 0.95]).as_slice()
+        {
+            assert_eq!(*p50, Duration::from_secs(6));
+            assert_eq!(*p90, Duration::from_secs(10));
+            assert_eq!(*p95, Duration::from_secs(10));
+        }
     }
 }

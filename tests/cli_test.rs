@@ -5,7 +5,7 @@ use predicates::prelude::predicate;
 #[test]
 fn test_get() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
-    cmd.args(&[
+    cmd.args([
         "-n",
         "5",
         "-c",
@@ -25,7 +25,7 @@ fn test_get() -> Result<()> {
 #[test]
 fn test_head() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
-    cmd.args(&[
+    cmd.args([
         "-n",
         "5",
         "-c",
@@ -45,7 +45,7 @@ fn test_head() -> Result<()> {
 #[test]
 fn test_post() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
-    cmd.args(&[
+    cmd.args([
         "-n",
         "5",
         "-c",
@@ -69,7 +69,7 @@ fn test_post() -> Result<()> {
 #[test]
 fn test_put() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
-    cmd.args(&[
+    cmd.args([
         "-n",
         "5",
         "-c",
@@ -93,7 +93,7 @@ fn test_put() -> Result<()> {
 #[test]
 fn test_patch() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
-    cmd.args(&[
+    cmd.args([
         "-n",
         "5",
         "-c",
@@ -117,7 +117,7 @@ fn test_patch() -> Result<()> {
 #[test]
 fn test_delete() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
-    cmd.args(&[
+    cmd.args([
         "-n",
         "5",
         "-c",
@@ -141,7 +141,7 @@ fn test_delete() -> Result<()> {
 #[test]
 fn test_data_file() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
-    cmd.args(&[
+    cmd.args([
         "-n",
         "5",
         "-c",
@@ -165,7 +165,7 @@ fn test_data_file() -> Result<()> {
 #[test]
 fn test_data_dir() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
-    cmd.args(&[
+    cmd.args([
         "-n",
         "5",
         "-c",
