@@ -177,7 +177,7 @@ async fn run_delete() {
 }
 
 #[tokio::test]
-async fn run_from_dir_post_randoml() {
+async fn run_from_dir_post_random() {
     let runner = LoadTestRunner::new(
         "https://mockhttp.org/post",
         5,
