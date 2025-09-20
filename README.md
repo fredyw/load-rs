@@ -1,7 +1,7 @@
 # load-rs
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Build & Test](https://github.com/fredyw/load-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/fredyw/load-rs/actions/workflows/rust.yml)
+[![load-rs](https://github.com/fredyw/load-rs/actions/workflows/load-rs.yml/badge.svg)](https://github.com/fredyw/load-rs/actions/workflows/load-rs.yml)
 
 
 A simple load testing tool written in Rust.
