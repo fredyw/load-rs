@@ -57,7 +57,7 @@ struct Args {
 
     /// Allows insecure connections by skipping TLS certificate verification.
     #[arg(short = 'I', long)]
-    insecure: bool,
+    insecure: Option<bool>,
 
     /// Order to process files from --data-dir.
     #[arg(short = 'O', long, value_parser = parse_order, default_value = "sequential", requires = "data_dir")]
@@ -134,7 +134,7 @@ async fn main() -> Result<()> {
         &args.ca_cert,
         &args.cert,
         &args.key,
-        args.insecure,
+        &args.insecure,
     )
     .await?;
     let result = if let Some(data_dir) = &args.data_dir {

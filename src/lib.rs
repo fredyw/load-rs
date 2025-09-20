@@ -126,14 +126,25 @@ impl LoadTestRunner {
         ca_cert: &Option<PathBuf>,
         cert: &Option<PathBuf>,
         key: &Option<PathBuf>,
-        insecure: bool,
+        insecure: &Option<bool>,
     ) -> Result<Self> {
+        if url.is_empty() {
+            bail!("URL cannot be empty");
+        }
+        if requests == 0 {
+            bail!("Number of requests cannot be zero");
+        }
+        if concurrency == 0 {
+            bail!("Number of concurrency cannot be zero");
+        }
         if concurrency > requests {
-            bail!("Concurrency: {concurrency} must be <= number of requests: {requests}");
+            bail!(
+                "Number of concurrency: {concurrency} must be less than number of requests: {requests}"
+            );
         }
         let mut builder = Client::builder()
             .use_rustls_tls()
-            .danger_accept_invalid_certs(insecure);
+            .danger_accept_invalid_certs(insecure.unwrap_or(false));
         if let Some(ca_cert_path) = ca_cert {
             let bytes = fs::read(ca_cert_path).await?;
             let ca_cert_bytes = Certificate::from_pem(&bytes)?;
@@ -414,5 +425,62 @@ impl LoadTestRunner {
             .send()
             .await?
             .error_for_status()?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Import everything from the outer module
+    use super::*;
+
+    #[tokio::test]
+    async fn new_succeeds() {
+        let result =
+            LoadTestRunner::new("http://localhost:8080", 10, 2, &None, &None, &None, &None)
+                .await
+                .unwrap();
+
+        assert_eq!(result.url, "http://localhost:8080");
+        assert_eq!(result.requests, 10);
+        assert_eq!(result.concurrency, 2);
+    }
+
+    #[tokio::test]
+    async fn new_url_is_empty_fails() {
+        let result = LoadTestRunner::new("", 2, 2, &None, &None, &None, &None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(result.to_string(), "URL cannot be empty");
+    }
+
+    #[tokio::test]
+    async fn new_num_requests_is_zero_fails() {
+        let result = LoadTestRunner::new("http://localhost:8080", 0, 2, &None, &None, &None, &None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(result.to_string(), "Number of requests cannot be zero");
+    }
+
+    #[tokio::test]
+    async fn new_num_concurrency_is_zero_fails() {
+        let result = LoadTestRunner::new("http://localhost:8080", 2, 0, &None, &None, &None, &None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(result.to_string(), "Number of concurrency cannot be zero");
+    }
+
+    #[tokio::test]
+    async fn new_num_concurrency_greater_than_num_requests_fails() {
+        let result = LoadTestRunner::new("http://localhost:8080", 2, 3, &None, &None, &None, &None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(
+            result.to_string(),
+            "Number of concurrency: 3 must be less than number of requests: 2"
+        );
     }
 }
