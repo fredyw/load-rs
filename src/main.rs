@@ -173,13 +173,24 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
 }
 
 async fn debug(runner: &LoadTestRunner, args: &Args) -> Result<()> {
-    let response = runner
-        .debug(
-            args.method,
-            Some(to_header_map(&args.header)?),
-            Some(to_body(args)),
-        )
-        .await?;
+    let response = if let Some(data_dir) = &args.data_dir {
+        runner
+            .debug_from_dir(
+                args.method,
+                Some(to_header_map(&args.header)?),
+                data_dir,
+                args.order,
+            )
+            .await?
+    } else {
+        runner
+            .debug(
+                args.method,
+                Some(to_header_map(&args.header)?),
+                Some(to_body(args)),
+            )
+            .await?
+    };
     println!("{:?} {}", response.version(), response.status());
     for (name, value) in response.headers() {
         println!("{}: {}", name, value.to_str().unwrap_or(""));

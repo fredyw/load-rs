@@ -313,11 +313,53 @@ impl LoadTestRunner {
         let body = Self::get_data(&body.unwrap_or(Body::Data(Bytes::new()))).await?;
         match method {
             HttpMethod::Get => self.get(header, false).await,
+            HttpMethod::Head => self.head(header, false).await,
             HttpMethod::Post => self.post(header, body, false).await,
             HttpMethod::Put => self.put(header, body, false).await,
             HttpMethod::Delete => self.delete(header, body, false).await,
             HttpMethod::Patch => self.patch(header, body, false).await,
-            HttpMethod::Head => self.head(header, false).await,
+        }
+    }
+
+    /// Executes a single request with a request body from a file in a directory for debugging.
+    ///
+    /// # Parameters
+    ///
+    /// * `method`: HTTP method (GET, POST, etc.) to use.
+    /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
+    ///   each request.
+    /// * `data_dir`: Directory of files to use as request bodies.
+    /// * `order`: Order to process files from the `data_dir`.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing `reqwest::Response`.
+    pub async fn debug_from_dir(
+        &self,
+        method: HttpMethod,
+        header: Option<HeaderMap>,
+        data_dir: &PathBuf,
+        order: Order,
+    ) -> Result<Response> {
+        if method == HttpMethod::Get || method == HttpMethod::Head {
+            bail!("HTTP method '{:?}' not supported", method);
+        }
+        let mut filenames = Self::get_filenames(data_dir).await?;
+        // Sort the file names to make it deterministic.
+        filenames.sort();
+        let header = header.unwrap_or_default();
+        let mut random = rand::rng();
+        let index = match order {
+            Order::Sequential => 0,
+            Order::Random => random.random_range(0..filenames.len()),
+        };
+        let body = fs::read(&filenames[index]).await?.into();
+        match method {
+            HttpMethod::Post => self.post(header, body, false).await,
+            HttpMethod::Put => self.put(header, body, false).await,
+            HttpMethod::Delete => self.delete(header, body, false).await,
+            HttpMethod::Patch => self.patch(header, body, false).await,
+            _ => panic!("Unexpected HTTP method '{method:?}'"),
         }
     }
 
