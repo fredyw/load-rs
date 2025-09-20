@@ -192,7 +192,7 @@ impl LoadTestRunner {
     where
         T: Fn(&LoadTestResult),
     {
-        let body = self.to_bytes(&body).await?;
+        let body = Self::to_bytes(&body).await?;
         let stream = stream::iter(0..self.requests as u64)
             .map(|_| {
                 let header = header.clone();
@@ -251,7 +251,7 @@ impl LoadTestRunner {
         if method == HttpMethod::Get || method == HttpMethod::Head {
             bail!("HTTP method '{:?}' not supported", method);
         }
-        let mut filenames = self.get_filenames(data_dir).await?;
+        let mut filenames = Self::get_filenames(data_dir).await?;
         // Sort the file names to make it deterministic.
         filenames.sort();
         let mut random = rand::rng();
@@ -292,7 +292,7 @@ impl LoadTestRunner {
         Ok(Identity::from_pem(&pem_bytes)?)
     }
 
-    async fn to_bytes(&self, body: &Body) -> Result<Bytes> {
+    async fn to_bytes(body: &Body) -> Result<Bytes> {
         match body {
             Body::Data(data) => Ok(data.clone()),
             Body::DataFile(data_file) => {
@@ -302,7 +302,7 @@ impl LoadTestRunner {
         }
     }
 
-    async fn get_filenames(&self, dir: &PathBuf) -> Result<Vec<PathBuf>> {
+    async fn get_filenames(dir: &PathBuf) -> Result<Vec<PathBuf>> {
         let mut filenames: Vec<PathBuf> = Vec::new();
         let mut read_dir = fs::read_dir(dir).await?;
         while let Some(entry) = read_dir.next_entry().await? {
@@ -431,6 +431,7 @@ impl LoadTestRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     #[tokio::test]
     async fn new_succeeds() {
@@ -481,5 +482,44 @@ mod tests {
             result.to_string(),
             "Number of concurrency: 3 must be less than number of requests: 2"
         );
+    }
+
+    #[tokio::test]
+    async fn get_filenames_succeeds() {
+        let mut filenames =
+            LoadTestRunner::get_filenames(&Path::new("tests/test_requests").to_path_buf())
+                .await
+                .unwrap();
+        filenames.sort();
+
+        assert_eq!(
+            filenames,
+            vec![
+                Path::new("tests/test_requests/test1.json").to_path_buf(),
+                Path::new("tests/test_requests/test2.json").to_path_buf(),
+                Path::new("tests/test_requests/test3.json").to_path_buf(),
+                Path::new("tests/test_requests/test4.json").to_path_buf(),
+                Path::new("tests/test_requests/test5.json").to_path_buf(),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn to_bytes_data_succeeds() {
+        let bytes = LoadTestRunner::to_bytes(&Body::Data("Hello".into()))
+            .await
+            .unwrap();
+
+        assert_eq!(bytes, "Hello".as_bytes());
+    }
+
+    #[tokio::test]
+    async fn to_bytes_data_file_succeeds() {
+        let bytes =
+            LoadTestRunner::to_bytes(&Body::DataFile("tests/test_requests/test1.json".into()))
+                .await
+                .unwrap();
+
+        assert_eq!(bytes, "{\n  \"message\": \"hello1\"\n}\n".as_bytes());
     }
 }
