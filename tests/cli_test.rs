@@ -137,3 +137,51 @@ fn test_delete() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_data_file() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args(&[
+        "-n",
+        "5",
+        "-c",
+        "2",
+        "-X",
+        "POST",
+        "-H",
+        "Content-Type: application/json",
+        "-D",
+        "tests/test_requests/test1.json",
+        "https://mockhttp.org/post",
+    ]);
+
+    cmd.assert().success().stdout(predicate::str::contains(
+        "Sending 5 requests to https://mockhttp.org/post with 2 concurrency",
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn test_data_dir() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args(&[
+        "-n",
+        "5",
+        "-c",
+        "2",
+        "-X",
+        "POST",
+        "-H",
+        "Content-Type: application/json",
+        "-i",
+        "tests/test_requests",
+        "https://mockhttp.org/post",
+    ]);
+
+    cmd.assert().success().stdout(predicate::str::contains(
+        "Sending 5 requests to https://mockhttp.org/post with 2 concurrency",
+    ));
+
+    Ok(())
+}
