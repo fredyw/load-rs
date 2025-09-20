@@ -430,7 +430,6 @@ impl LoadTestRunner {
 
 #[cfg(test)]
 mod tests {
-    // Import everything from the outer module
     use super::*;
 
     #[tokio::test]
