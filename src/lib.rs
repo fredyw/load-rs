@@ -146,6 +146,12 @@ impl LoadTestRunner {
             .use_rustls_tls()
             .danger_accept_invalid_certs(insecure.unwrap_or(false));
         if let Some(ca_cert_path) = ca_cert {
+            if !ca_cert_path.is_file() {
+                bail!(
+                    "CA certificate '{}' does not exist or is not a file",
+                    ca_cert_path.to_str().unwrap()
+                );
+            }
             let bytes = fs::read(ca_cert_path).await?;
             let ca_cert_bytes = Certificate::from_pem(&bytes)?;
             builder = builder.add_root_certificate(ca_cert_bytes);
@@ -192,7 +198,7 @@ impl LoadTestRunner {
     where
         T: Fn(&LoadTestResult),
     {
-        let body = Self::to_bytes(&body).await?;
+        let body = Self::get_data(&body).await?;
         let stream = stream::iter(0..self.requests as u64)
             .map(|_| {
                 let header = header.clone();
@@ -285,6 +291,18 @@ impl LoadTestRunner {
     }
 
     async fn create_identity(cert: &PathBuf, key: &PathBuf) -> Result<Identity> {
+        if !cert.is_file() {
+            bail!(
+                "Certificate '{}' does not exist or is not a file",
+                cert.to_str().unwrap()
+            );
+        }
+        if !key.is_file() {
+            bail!(
+                "Private key '{}' does not exist or is not a file",
+                key.to_str().unwrap()
+            );
+        }
         let cert_bytes = tokio::fs::read(cert).await?;
         let key_bytes = tokio::fs::read(key).await?;
         let mut pem_bytes = cert_bytes;
@@ -292,10 +310,16 @@ impl LoadTestRunner {
         Ok(Identity::from_pem(&pem_bytes)?)
     }
 
-    async fn to_bytes(body: &Body) -> Result<Bytes> {
+    async fn get_data(body: &Body) -> Result<Bytes> {
         match body {
             Body::Data(data) => Ok(data.clone()),
             Body::DataFile(data_file) => {
+                if !data_file.is_file() {
+                    bail!(
+                        "Data file '{}' does not exist or is not a file",
+                        data_file.to_str().unwrap()
+                    );
+                }
                 let data = fs::read(data_file).await?;
                 Ok(data.into())
             }
@@ -485,6 +509,66 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn new_ca_cert_does_not_exist_fails() {
+        let result = LoadTestRunner::new(
+            "http://localhost:8080",
+            10,
+            2,
+            &Some("doesnotexist".into()),
+            &None,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            result.to_string(),
+            "CA certificate 'doesnotexist' does not exist or is not a file"
+        );
+    }
+
+    #[tokio::test]
+    async fn new_cert_does_not_exist_fails() {
+        let result = LoadTestRunner::new(
+            "http://localhost:8080",
+            10,
+            2,
+            &None,
+            &Some("doesnotexist".into()),
+            &Some("tests/tls/key.pem".into()),
+            &None,
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            result.to_string(),
+            "Certificate 'doesnotexist' does not exist or is not a file"
+        );
+    }
+
+    #[tokio::test]
+    async fn new_key_does_not_exist_fails() {
+        let result = LoadTestRunner::new(
+            "http://localhost:8080",
+            10,
+            2,
+            &None,
+            &Some("tests/tls/cert.pem".into()),
+            &Some("doesnotexist".into()),
+            &None,
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            result.to_string(),
+            "Private key 'doesnotexist' does not exist or is not a file"
+        );
+    }
+
+    #[tokio::test]
     async fn get_filenames_succeeds() {
         let mut filenames =
             LoadTestRunner::get_filenames(&Path::new("tests/test_requests").to_path_buf())
@@ -505,8 +589,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn to_bytes_data_succeeds() {
-        let bytes = LoadTestRunner::to_bytes(&Body::Data("Hello".into()))
+    async fn get_data_succeeds() {
+        let bytes = LoadTestRunner::get_data(&Body::Data("Hello".into()))
             .await
             .unwrap();
 
@@ -514,12 +598,36 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn to_bytes_data_file_succeeds() {
+    async fn get_data_file_succeeds() {
         let bytes =
-            LoadTestRunner::to_bytes(&Body::DataFile("tests/test_requests/test1.json".into()))
+            LoadTestRunner::get_data(&Body::DataFile("tests/test_requests/test1.json".into()))
                 .await
                 .unwrap();
 
         assert_eq!(bytes, "{\n  \"message\": \"hello1\"\n}\n".as_bytes());
+    }
+
+    #[tokio::test]
+    async fn get_data_file_does_not_exist_fails() {
+        let err = LoadTestRunner::get_data(&Body::DataFile("doesnotexist".into()))
+            .await
+            .unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            "Data file 'doesnotexist' does not exist or is not a file"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_invalid_data_file_fails() {
+        let err = LoadTestRunner::get_data(&Body::DataFile("tests/test_requests".into()))
+            .await
+            .unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            "Data file 'tests/test_requests' does not exist or is not a file"
+        );
     }
 }
