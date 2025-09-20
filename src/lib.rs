@@ -191,17 +191,17 @@ impl LoadTestRunner {
     pub async fn run<T>(
         &self,
         method: HttpMethod,
-        header: HeaderMap,
-        body: Body,
+        header: Option<HeaderMap>,
+        body: Option<Body>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
         T: Fn(&LoadTestResult),
     {
-        let body = Self::get_data(&body).await?;
+        let body = Self::get_data(&body.unwrap_or(Body::Data(Bytes::new()))).await?;
         let stream = stream::iter(0..self.requests as u64)
             .map(|_| {
-                let header = header.clone();
+                let header = header.clone().unwrap_or_default();
                 let body = body.clone();
                 async move {
                     let start_time = Instant::now();

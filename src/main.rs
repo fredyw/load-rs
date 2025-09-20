@@ -159,8 +159,8 @@ async fn main() -> Result<()> {
         runner
             .run(
                 args.method,
-                to_header_map(&args.header)?,
-                to_body(&args),
+                Some(to_header_map(&args.header)?),
+                Some(to_body(&args)),
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
