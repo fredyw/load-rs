@@ -141,7 +141,7 @@ async fn main() -> Result<()> {
         runner
             .run_from_dir(
                 args.method,
-                to_header_map(&args.header)?,
+                Some(to_header_map(&args.header)?),
                 data_dir,
                 args.order,
                 |result| {

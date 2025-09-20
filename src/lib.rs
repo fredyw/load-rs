@@ -246,7 +246,7 @@ impl LoadTestRunner {
     pub async fn run_from_dir<T>(
         &self,
         method: HttpMethod,
-        header: HeaderMap,
+        header: Option<HeaderMap>,
         data_dir: &PathBuf,
         order: Order,
         in_progress: T,
@@ -263,7 +263,7 @@ impl LoadTestRunner {
         let mut random = rand::rng();
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
-                let header = header.clone();
+                let header = header.clone().unwrap_or(HeaderMap::new());
                 let index = match order {
                     Order::Sequential => i as usize % filenames.len(),
                     Order::Random => random.random_range(0..filenames.len()),
