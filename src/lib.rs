@@ -1,6 +1,7 @@
 use anyhow::{Result, bail};
 use bytes::Bytes;
 use futures::{Stream, StreamExt, stream};
+use rand::Rng;
 use reqwest::header::HeaderMap;
 use reqwest::{Certificate, Client, Identity, Response};
 use std::path::PathBuf;
@@ -92,6 +93,16 @@ pub enum Body {
 
     /// The request body will be read from a single specified file.
     DataFile(PathBuf),
+}
+
+/// Specifies the order in which to process request body files from a directory.
+#[derive(Debug, Clone)]
+pub enum Order {
+    /// Process files in alphabetical order (default).
+    Sequential,
+
+    /// Process files in a random order.
+    Random,
 }
 
 impl LoadTestRunner {
@@ -206,6 +217,7 @@ impl LoadTestRunner {
     /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
     ///   each request.
     /// * `data_dir`: Directory of files to use as request bodies.
+    /// * `order`: Order to process files from the `data_dir`.
     /// * `in_progress`: A callback function that is invoked after each request completes.
     ///   It receives a reference to the `LoadTestResult` struct, allowing for real-time progress
     ///   reporting.
@@ -219,6 +231,7 @@ impl LoadTestRunner {
         method: HttpMethod,
         header: HeaderMap,
         data_dir: &PathBuf,
+        order: Order,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -230,10 +243,14 @@ impl LoadTestRunner {
         let mut filenames = self.get_filenames(data_dir).await?;
         // Sort the file names to make it deterministic.
         filenames.sort();
+        let mut random = rand::rng();
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
                 let header = header.clone();
-                let index = i as usize % filenames.len();
+                let index = match order {
+                    Order::Sequential => i as usize % filenames.len(),
+                    Order::Random => random.random_range(0..filenames.len()),
+                };
                 let path = &filenames[index];
                 async move {
                     let body = match fs::read(path).await {

@@ -1,9 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use bytes::Bytes;
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use load_rs::{Body, HttpMethod, LoadTestRunner};
+use load_rs::{Body, HttpMethod, LoadTestRunner, Order};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -58,9 +58,13 @@ struct Args {
     /// Allows insecure connections by skipping TLS certificate verification.
     #[arg(short = 'I', long)]
     insecure: bool,
+
+    /// Order to process files from --data-dir.
+    #[arg(short = 'O', long, value_parser = parse_order, default_value = "sequential", requires = "data_dir")]
+    order: Order,
 }
 
-fn parse_http_method(s: &str) -> Result<HttpMethod, String> {
+fn parse_http_method(s: &str) -> Result<HttpMethod> {
     match s.to_ascii_lowercase().as_str() {
         "get" => Ok(HttpMethod::Get),
         "post" => Ok(HttpMethod::Post),
@@ -68,7 +72,15 @@ fn parse_http_method(s: &str) -> Result<HttpMethod, String> {
         "delete" => Ok(HttpMethod::Delete),
         "patch" => Ok(HttpMethod::Patch),
         "head" => Ok(HttpMethod::Head),
-        _ => Err(format!("'{s}' is not a valid HTTP method")),
+        _ => bail!("'{s}' is not a valid HTTP method"),
+    }
+}
+
+fn parse_order(s: &str) -> Result<Order> {
+    match s.to_ascii_lowercase().as_str() {
+        "sequential" => Ok(Order::Sequential),
+        "random" => Ok(Order::Random),
+        _ => bail!("'{s}' is not a valid read order"),
     }
 }
 
@@ -131,6 +143,7 @@ async fn main() -> Result<()> {
                 args.method,
                 to_header_map(&args.header)?,
                 data_dir,
+                args.order,
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | Avg: {:.2?}",

@@ -786,6 +786,7 @@ dependencies = [
  "console",
  "futures",
  "indicatif",
+ "rand",
  "reqwest",
  "tokio",
 ]
