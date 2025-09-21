@@ -11,7 +11,7 @@ async fn run_get() {
         .unwrap();
 
     let result = runner
-        .run(HttpMethod::Get, None, None, |_| {})
+        .run(HttpMethod::Get, None, None, &None, |_| {})
         .await
         .unwrap();
 
@@ -31,7 +31,7 @@ async fn run_head() {
         .unwrap();
 
     let result = runner
-        .run(HttpMethod::Head, None, None, |_| {})
+        .run(HttpMethod::Head, None, None, &None, |_| {})
         .await
         .unwrap();
 
@@ -65,6 +65,7 @@ async fn run_post() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
+            &None,
             |_| {},
         )
         .await
@@ -92,6 +93,7 @@ async fn run_put() {
             HttpMethod::Put,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
+            &None,
             |_| {},
         )
         .await
@@ -127,6 +129,7 @@ async fn run_patch() {
             HttpMethod::Patch,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
+            &None,
             |_| {},
         )
         .await
@@ -162,6 +165,7 @@ async fn run_delete() {
             HttpMethod::Delete,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
+            &None,
             |_| {},
         )
         .await
@@ -198,6 +202,7 @@ async fn run_from_dir_sequential() {
             Some(headers),
             &"tests/test_requests".into(),
             Order::Sequential,
+            &None,
             |_| {},
         )
         .await
@@ -233,6 +238,7 @@ async fn run_from_data_file() {
             HttpMethod::Post,
             Some(headers),
             Some(DataFile("tests/test_requests/test1.json".into())),
+            &None,
             |_| {},
         )
         .await
@@ -269,6 +275,7 @@ async fn run_from_dir_random() {
             Some(headers),
             &"tests/test_requests".into(),
             Order::Random,
+            &None,
             |_| {},
         )
         .await
@@ -305,6 +312,7 @@ async fn run_from_dir_requests_less_than_files_sequential() {
             Some(headers),
             &"tests/test_requests".into(),
             Order::Sequential,
+            &None,
             |_| {},
         )
         .await
@@ -341,6 +349,7 @@ async fn run_from_dir_requests_greater_than_files_sequential() {
             Some(headers),
             &"tests/test_requests".into(),
             Order::Sequential,
+            &None,
             |_| {},
         )
         .await
@@ -377,6 +386,7 @@ async fn run_from_dir_requests_less_than_files_random() {
             Some(headers),
             &"tests/test_requests".into(),
             Order::Random,
+            &None,
             |_| {},
         )
         .await
@@ -413,6 +423,7 @@ async fn run_from_dir_requests_greater_than_files_random() {
             Some(headers),
             &"tests/test_requests".into(),
             Order::Random,
+            &None,
             |_| {},
         )
         .await

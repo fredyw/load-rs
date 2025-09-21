@@ -847,6 +847,7 @@ dependencies = [
  "predicates",
  "rand",
  "reqwest",
+ "serde_json",
  "tokio",
 ]
 

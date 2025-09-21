@@ -63,6 +63,10 @@ struct Args {
     #[arg(short = 'O', long, value_parser = parse_order, default_value = "sequential", requires = "data_dir")]
     order: Order,
 
+    /// Directory to save responses to.
+    #[arg(short = 'o', long = "output-dir")]
+    output_dir: Option<PathBuf>,
+
     /// Performs a single request and dumps the response.
     #[arg(short = 'G', long)]
     debug: bool,
@@ -136,6 +140,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 Some(to_header_map(&args.header)?),
                 data_dir,
                 args.order,
+                &args.output_dir,
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | Avg: {:.2?}",
@@ -153,6 +158,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.method,
                 Some(to_header_map(&args.header)?),
                 Some(to_body(args)),
+                &args.output_dir,
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | Avg: {:.2?}",

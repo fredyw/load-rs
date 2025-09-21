@@ -4,7 +4,10 @@ use futures::{Stream, StreamExt, stream};
 use rand::Rng;
 use reqwest::header::HeaderMap;
 use reqwest::{Certificate, Client, Identity, Response};
-use std::path::PathBuf;
+use serde_json::json;
+use std::collections::HashMap;
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tokio::fs;
 
@@ -25,7 +28,7 @@ pub struct LoadTestRunner {
 }
 
 /// Defines the allowed HTTP methods that the user can specify.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum HttpMethod {
     Get,
     Post,
@@ -96,7 +99,7 @@ pub enum Body {
 }
 
 /// Specifies the order in which to process request body files from a directory.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Order {
     /// Process files in alphabetical order (default).
     Sequential,
@@ -193,6 +196,7 @@ impl LoadTestRunner {
         method: HttpMethod,
         header: Option<HeaderMap>,
         body: Option<Body>,
+        output_dir: &Option<PathBuf>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -200,7 +204,7 @@ impl LoadTestRunner {
     {
         let body = Self::get_data(&body.unwrap_or(Body::Data(Bytes::new()))).await?;
         let stream = stream::iter(0..self.requests as u64)
-            .map(|_| {
+            .map(|i| {
                 let header = header.clone().unwrap_or_default();
                 let body = body.clone();
                 async move {
@@ -214,11 +218,11 @@ impl LoadTestRunner {
                         HttpMethod::Patch => self.patch(header, body, true).await,
                     };
                     let duration = start_time.elapsed();
-                    (response, duration)
+                    (response, duration, i, None)
                 }
             })
             .buffer_unordered(self.concurrency as usize);
-        self.process_stream(stream, in_progress).await
+        self.process_stream(stream, in_progress, output_dir).await
     }
 
     /// Executes the load test with request bodies from files in a directory and streams progress
@@ -235,6 +239,7 @@ impl LoadTestRunner {
     ///   each request.
     /// * `data_dir`: Directory of files to use as request bodies.
     /// * `order`: Order to process files from the `data_dir`.
+    /// * `output_dir`: Directory to save responses to.
     /// * `in_progress`: A callback function that is invoked after each request completes.
     ///   It receives a reference to the `LoadTestResult` struct, allowing for real-time progress
     ///   reporting.
@@ -249,6 +254,7 @@ impl LoadTestRunner {
         header: Option<HeaderMap>,
         data_dir: &PathBuf,
         order: Order,
+        output_dir: &Option<PathBuf>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -257,22 +263,23 @@ impl LoadTestRunner {
         if method == HttpMethod::Get || method == HttpMethod::Head {
             bail!("HTTP method '{:?}' not supported", method);
         }
-        let mut filenames = Self::get_filenames(data_dir).await?;
+        let mut file_names = Self::get_file_names(data_dir).await?;
         // Sort the file names to make it deterministic.
-        filenames.sort();
+        file_names.sort();
         let mut random = rand::rng();
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
                 let header = header.clone().unwrap_or_default();
                 let index = match order {
-                    Order::Sequential => i as usize % filenames.len(),
-                    Order::Random => random.random_range(0..filenames.len()),
+                    Order::Sequential => i as usize % file_names.len(),
+                    Order::Random => random.random_range(0..file_names.len()),
                 };
-                let path = &filenames[index];
+                let path = &file_names[index];
+                let base_file_name = path.file_stem().map(|f| f.to_owned());
                 async move {
                     let body = match fs::read(path).await {
                         Ok(data) => data.into(),
-                        Err(e) => return (Err(e.into()), Duration::default()),
+                        Err(e) => return (Err(e.into()), Duration::default(), i, base_file_name),
                     };
                     let start_time = Instant::now();
                     let response = match method {
@@ -283,11 +290,11 @@ impl LoadTestRunner {
                         _ => panic!("Unexpected HTTP method '{method:?}'"),
                     };
                     let duration = start_time.elapsed();
-                    (response, duration)
+                    (response, duration, i, base_file_name)
                 }
             })
             .buffer_unordered(self.concurrency as usize);
-        self.process_stream(stream, in_progress).await
+        self.process_stream(stream, in_progress, output_dir).await
     }
 
     /// Executes a single request for debugging.
@@ -344,16 +351,16 @@ impl LoadTestRunner {
         if method == HttpMethod::Get || method == HttpMethod::Head {
             bail!("HTTP method '{:?}' not supported", method);
         }
-        let mut filenames = Self::get_filenames(data_dir).await?;
+        let mut file_names = Self::get_file_names(data_dir).await?;
         // Sort the file names to make it deterministic.
-        filenames.sort();
+        file_names.sort();
         let header = header.unwrap_or_default();
         let mut random = rand::rng();
         let index = match order {
             Order::Sequential => 0,
-            Order::Random => random.random_range(0..filenames.len()),
+            Order::Random => random.random_range(0..file_names.len()),
         };
-        let body = fs::read(&filenames[index]).await?.into();
+        let body = fs::read(&file_names[index]).await?.into();
         match method {
             HttpMethod::Post => self.post(header, body, false).await,
             HttpMethod::Put => self.put(header, body, false).await,
@@ -399,35 +406,70 @@ impl LoadTestRunner {
         }
     }
 
-    async fn get_filenames(dir: &PathBuf) -> Result<Vec<PathBuf>> {
-        let mut filenames: Vec<PathBuf> = Vec::new();
+    async fn get_file_names(dir: &PathBuf) -> Result<Vec<PathBuf>> {
+        let mut file_names: Vec<PathBuf> = Vec::new();
         let mut read_dir = fs::read_dir(dir).await?;
         while let Some(entry) = read_dir.next_entry().await? {
             if entry.file_type().await?.is_file() {
-                filenames.push(entry.path());
+                file_names.push(entry.path());
             }
         }
-        Ok(filenames)
+        Ok(file_names)
     }
 
-    async fn process_stream<S, F>(&self, mut stream: S, in_progress: F) -> Result<LoadTestResult>
+    async fn process_stream<S, F>(
+        &self,
+        mut stream: S,
+        in_progress: F,
+        output_dir: &Option<PathBuf>,
+    ) -> Result<LoadTestResult>
     where
-        S: Stream<Item = (Result<Response, anyhow::Error>, Duration)> + Unpin,
+        S: Stream<
+                Item = (
+                    Result<Response, anyhow::Error>,
+                    Duration,
+                    u64,
+                    Option<OsString>,
+                ),
+            > + Unpin,
         F: Fn(&LoadTestResult),
     {
         let mut result = LoadTestResult::new();
-        while let Some((res, duration)) = stream.next().await {
+        if let Some(output_dir) = output_dir {
+            fs::create_dir_all(output_dir).await?;
+        }
+        while let Some((res, duration, iteration, base_file_name)) = stream.next().await {
             result.completed += 1;
             match res {
-                Ok(_) => {
+                Ok(response) => {
                     result.success += 1;
                     // Only capture the duration for successful request.
                     result.total_duration += duration;
                     result.avg = result.total_duration / result.completed;
                     result.durations.push(duration);
+                    if let Some(output_dir) = output_dir {
+                        let output_file = Self::get_output_file(
+                            self.requests,
+                            output_dir,
+                            iteration,
+                            &base_file_name,
+                            true,
+                        );
+                        Self::write_success_output_file(&output_file, response).await?;
+                    }
                 }
-                Err(_) => {
+                Err(error) => {
                     result.failures += 1;
+                    if let Some(output_dir) = output_dir {
+                        let output_file = Self::get_output_file(
+                            self.requests,
+                            output_dir,
+                            iteration,
+                            &base_file_name,
+                            false,
+                        );
+                        Self::write_failure_output_file(&output_file, &error).await?;
+                    }
                 }
             }
             in_progress(&result);
@@ -557,6 +599,56 @@ impl LoadTestRunner {
             })
             .collect()
     }
+
+    fn get_output_file(
+        num_requests: u32,
+        output_dir: &Path,
+        iteration: u64,
+        base_file_name: &Option<OsString>,
+        success: bool,
+    ) -> PathBuf {
+        if let Some(base_file_name) = base_file_name {
+            output_dir.join(PathBuf::from(format!(
+                "{}-{:0width$}-{}.json",
+                if success { "success" } else { "failure" },
+                iteration,
+                base_file_name.to_string_lossy(),
+                width = num_requests.to_string().len()
+            )))
+        } else {
+            output_dir.join(PathBuf::from(format!(
+                "{}-{:0width$}.json",
+                if success { "success" } else { "failure" },
+                iteration,
+                width = num_requests.to_string().len()
+            )))
+        }
+    }
+
+    async fn write_success_output_file(output_file: &Path, response: Response) -> Result<()> {
+        let version: String = format!("{:?}", response.version());
+        let status_code = response.status().as_u16();
+        let headers: HashMap<String, String> = response
+            .headers()
+            .iter()
+            .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
+            .collect();
+        let body = response.text().await?;
+        let output = json!({
+            "version": version,
+            "status": status_code,
+            "headers": headers,
+            "body": body,
+        });
+        Ok(fs::write(output_file, serde_json::to_string_pretty(&output)?).await?)
+    }
+
+    async fn write_failure_output_file(output_file: &Path, error: &anyhow::Error) -> Result<()> {
+        let output = json!({
+            "error": error.to_string(),
+        });
+        Ok(fs::write(output_file, serde_json::to_string_pretty(&output)?).await?)
+    }
 }
 
 #[cfg(test)]
@@ -675,14 +767,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_filenames_succeeds() {
-        let mut filenames = LoadTestRunner::get_filenames(&"tests/test_requests".into())
+    async fn get_file_names_succeeds() {
+        let mut file_names = LoadTestRunner::get_file_names(&"tests/test_requests".into())
             .await
             .unwrap();
-        filenames.sort();
+        file_names.sort();
 
         assert_eq!(
-            filenames,
+            file_names,
             vec![
                 PathBuf::from("tests/test_requests/test1.json"),
                 "tests/test_requests/test2.json".into(),
@@ -746,5 +838,34 @@ mod tests {
             assert_eq!(*p90, Duration::from_secs(10));
             assert_eq!(*p95, Duration::from_secs(10));
         }
+    }
+
+    #[test]
+    fn get_output_file_succeeds() {
+        let output_file =
+            LoadTestRunner::get_output_file(100, PathBuf::from("/tmp").as_path(), 3, &None, true);
+        assert_eq!(output_file.as_os_str(), "/tmp/success-003.json");
+
+        let output_file =
+            LoadTestRunner::get_output_file(100, PathBuf::from("/tmp").as_path(), 3, &None, false);
+        assert_eq!(output_file.as_os_str(), "/tmp/failure-003.json");
+
+        let output_file = LoadTestRunner::get_output_file(
+            100,
+            PathBuf::from("/tmp").as_path(),
+            3,
+            &Some(PathBuf::from("request").as_os_str().to_owned()),
+            true,
+        );
+        assert_eq!(output_file.as_os_str(), "/tmp/success-003-request.json");
+
+        let output_file = LoadTestRunner::get_output_file(
+            100,
+            PathBuf::from("/tmp").as_path(),
+            3,
+            &Some(PathBuf::from("request").as_os_str().to_owned()),
+            false,
+        );
+        assert_eq!(output_file.as_os_str(), "/tmp/failure-003-request.json");
     }
 }
