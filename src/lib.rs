@@ -451,7 +451,7 @@ impl LoadTestRunner {
                         let output_file = Self::get_output_file(
                             self.requests,
                             output_dir,
-                            iteration,
+                            iteration + 1,
                             &base_file_name,
                             true,
                         );
@@ -464,7 +464,7 @@ impl LoadTestRunner {
                         let output_file = Self::get_output_file(
                             self.requests,
                             output_dir,
-                            iteration,
+                            iteration + 1,
                             &base_file_name,
                             false,
                         );
