@@ -14,7 +14,6 @@ Usage: load-rs [OPTIONS] --requests <REQUESTS> --concurrency <CONCURRENCY> <URL>
 Arguments:
   <URL>  Target URL to send requests to
 
-Options:
   -n, --requests <REQUESTS>        Total number of requests to send
   -c, --concurrency <CONCURRENCY>  Number of concurrent requests to run at a time
   -X, --method <METHOD>            HTTP method to use for the requests [default: get]
@@ -25,8 +24,10 @@ Options:
   -C, --cacert <CA_CERT>           Custom CA certificate file (PEM format)
   -E, --cert <CERT>                Public certificate file (PEM format)
   -k, --key <KEY>                  Private key file (PEM format)
-  -I, --insecure                   Allows insecure connections by skipping TLS certificate verification
+  -I, --insecure <INSECURE>        Allows insecure connections by skipping TLS certificate verification [possible values: true, false]
   -O, --order <ORDER>              Order to process files from --data-dir [default: sequential]
+  -o, --output-dir <OUTPUT_DIR>    Directory to save responses to
+  -G, --debug                      Performs a single request and dumps the response
   -h, --help                       Print help
-  -V, --version                    Print versio
+  -V, --version                    Print version
 ```
