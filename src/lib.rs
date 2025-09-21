@@ -455,7 +455,7 @@ impl LoadTestRunner {
                             &base_file_name,
                             true,
                         );
-                        Self::write_success_output_file(&output_file, response).await?;
+                        Self::write_success_output_file(&output_file, response, duration).await?;
                     }
                 }
                 Err(error) => {
@@ -625,7 +625,11 @@ impl LoadTestRunner {
         }
     }
 
-    async fn write_success_output_file(output_file: &Path, response: Response) -> Result<()> {
+    async fn write_success_output_file(
+        output_file: &Path,
+        response: Response,
+        duration: Duration,
+    ) -> Result<()> {
         let version: String = format!("{:?}", response.version());
         let status_code = response.status().as_u16();
         let headers: HashMap<String, String> = response
@@ -639,6 +643,7 @@ impl LoadTestRunner {
             "status": status_code,
             "headers": headers,
             "body": body,
+            "duration": duration,
         });
         Ok(fs::write(output_file, serde_json::to_string_pretty(&output)?).await?)
     }
