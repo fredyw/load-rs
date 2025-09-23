@@ -68,6 +68,9 @@ pub struct LoadTestResult {
 
     /// The 95th percentile response time for successful requests.
     pub p95: Duration,
+
+    /// Requests per second.
+    pub rps: f64,
 }
 
 impl LoadTestResult {
@@ -82,6 +85,7 @@ impl LoadTestResult {
             p50: Duration::default(),
             p90: Duration::default(),
             p95: Duration::default(),
+            rps: 0.0,
         }
     }
 }
@@ -438,6 +442,7 @@ impl LoadTestRunner {
         if let Some(output_dir) = output_dir {
             fs::create_dir_all(output_dir).await?;
         }
+        let test_time = Instant::now();
         while let Some((res, duration, iteration, base_file_name)) = stream.next().await {
             result.completed += 1;
             match res {
@@ -445,6 +450,7 @@ impl LoadTestRunner {
                     result.success += 1;
                     // Only capture the duration for successful request.
                     result.total_duration += duration;
+                    result.rps = result.success as f64 / test_time.elapsed().as_secs_f64();
                     result.avg = result.total_duration / result.completed;
                     result.durations.push(duration);
                     if let Some(output_dir) = output_dir {
@@ -487,6 +493,7 @@ impl LoadTestRunner {
         } else {
             Duration::new(0, 0)
         };
+        result.rps = result.success as f64 / test_time.elapsed().as_secs_f64();
 
         Ok(result)
     }
