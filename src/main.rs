@@ -162,11 +162,13 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 &args.output_dir,
                 |result| {
                     pb.set_message(format!(
-                        "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?}",
+                        "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?} | Min: {:.2?} | Max: {:.2?}",
                         style(result.success).green(),
                         style(result.failures).red(),
                         result.rps,
-                        result.avg
+                        result.avg,
+                        result.min,
+                        result.max
                     ));
                     pb.inc(1);
                 },
@@ -174,8 +176,8 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
             .await?
     };
     pb.finish_with_message(format!(
-        "✅ Done!\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?} | P50: {:.2?} | P90: {:.2?} | P95: {:.2?}",
-        style(result.success).green(), style(result.failures).red(), result.rps, result.avg, result.p50, result.p90, result.p95
+        "✅ Done!\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?} | Min: {:.2?} | Max: {:.2?} | P50: {:.2?} | P90: {:.2?} | P95: {:.2?}",
+        style(result.success).green(), style(result.failures).red(), result.rps, result.avg, result.min, result.max, result.p50, result.p90, result.p95
     ));
     Ok(())
 }

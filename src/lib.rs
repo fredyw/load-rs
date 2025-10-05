@@ -60,6 +60,12 @@ pub struct LoadTestResult {
     /// The average response time for successful requests.
     pub avg: Duration,
 
+    /// The minimum response time for successful requests.
+    pub min: Duration,
+
+    /// The maximum response time for successful requests.
+    pub max: Duration,
+
     /// The 50th percentile (median) response time for successful requests.
     pub p50: Duration,
 
@@ -82,6 +88,8 @@ impl LoadTestResult {
             total_duration: Duration::default(),
             durations: Vec::new(),
             avg: Duration::default(),
+            min: Duration::default(),
+            max: Duration::default(),
             p50: Duration::default(),
             p90: Duration::default(),
             p95: Duration::default(),
@@ -452,6 +460,12 @@ impl LoadTestRunner {
                     result.total_duration += duration;
                     result.rps = result.success as f64 / test_time.elapsed().as_secs_f64();
                     result.avg = result.total_duration / result.completed;
+                    result.min = if result.min == Duration::default() {
+                        duration
+                    } else {
+                        result.min.min(duration)
+                    };
+                    result.max = result.max.max(duration);
                     result.durations.push(duration);
                     if let Some(output_dir) = output_dir {
                         let output_file = Self::get_output_file(
