@@ -1,12 +1,14 @@
 #!/bin/bash
 
+set -ueo pipefail
+
 #==============================================================================
 # Generate CA
 #==============================================================================
 # Generate CA private key.
 openssl genpkey -algorithm RSA -out ca.key
 # Generate CA certificate (self-signed).
-openssl req -new -x509 -key ca.key -out ca.crt -subj "/CN=Test CA" -days 3650
+openssl req -new -x509 -key ca.key -out ca.crt -subj "/CN=Test CA" -extensions v3_ca -days 3650
 
 #==============================================================================
 # Generate server certificate
@@ -35,7 +37,7 @@ openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out c
 #==============================================================================
 echo "Generating untrusted client certificate..."
 openssl genpkey -algorithm RSA -out untrusted-ca.key
-openssl req -new -x509 -key untrusted-ca.key -out untrusted-ca.crt -subj "/CN=Untrusted Test CA" -days 3650
+openssl req -new -x509 -key untrusted-ca.key -out untrusted-ca.crt -subj "/CN=Untrusted Test CA" -extensions v3_ca -days 3650
 
 #==============================================================================
 # Generate untrusted client certificate for testing
