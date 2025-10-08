@@ -779,7 +779,7 @@ mod tests {
             10,
             2,
             &None,
-            &Some("tests/tls/cert.pem".into()),
+            &Some("tests/tls/client.crt".into()),
             &Some("doesnotexist".into()),
             &None,
         )
