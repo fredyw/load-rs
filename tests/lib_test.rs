@@ -125,7 +125,7 @@ async fn run_server(version: HttpVersion) -> Result<TestServer> {
     })
 }
 
-async fn load_certs(path: &Path) -> Result<Vec<CertificateDer>> {
+async fn load_certs(path: &Path) -> Result<Vec<CertificateDer<'static>>> {
     let cert = fs::read(path).await?;
     let mut reader = BufReader::new(cert.as_slice());
     certs(&mut reader)
@@ -133,7 +133,7 @@ async fn load_certs(path: &Path) -> Result<Vec<CertificateDer>> {
         .context(format!("Failed to load certificate: {path:?}"))
 }
 
-async fn load_key(path: &Path) -> Result<PrivateKeyDer> {
+async fn load_key(path: &Path) -> Result<PrivateKeyDer<'static>> {
     let key = fs::read(path).await?;
     let mut reader = std::io::BufReader::new(key.as_slice());
     private_key(&mut reader)?.context(format!("Failed to load key: {path:?}"))
