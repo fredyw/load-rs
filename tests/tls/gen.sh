@@ -27,10 +27,12 @@ openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out s
 #==============================================================================
 # Generate client private key.
 openssl genpkey -algorithm RSA -out client.key
+# Create a config file for the client certificate extensions.
+echo "extendedKeyUsage = clientAuth" > client.ext
 # Generate a CSR for the client.
 openssl req -new -key client.key -out client.csr -subj "/CN=Test Client"
 # Sign the client certificate with your CA.
-openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -days 3650
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -extfile client.ext -days 3650
 
 #==============================================================================
 # Generate untrusted CA for testing
