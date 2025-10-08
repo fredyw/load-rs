@@ -17,4 +17,10 @@ tokio = { version = "1.47.1", features = ["full"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.17"
+http-body-util = "0.1.3"
+hyper = { version = "1.7.0", features = ["full"] }
+hyper-util = "0.1.17"
 predicates = "3.1.3"
+rustls = { version = "0.23.32", features = ["aws-lc-rs"] }
+rustls-pemfile = "2.2.0"
+tokio-rustls = "0.26.4"

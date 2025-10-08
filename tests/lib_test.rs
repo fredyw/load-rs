@@ -1,10 +1,143 @@
 extern crate load_rs;
 
+use anyhow::{Context, Result};
+use http_body_util::Full;
+use hyper::Response;
+use hyper::body::Bytes;
+use hyper::service::service_fn;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use load_rs::Body::{Data, DataFile};
 use load_rs::{HttpMethod, LoadTestRunner, Order};
 use reqwest::header::HeaderMap;
-use std::path::PathBuf;
+use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use rustls::server::WebPkiClientVerifier;
+use rustls::{RootCertStore, ServerConfig};
+use rustls_pemfile::{certs, private_key};
+use std::convert::Infallible;
+use std::io::BufReader;
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::fs;
+use tokio::net::TcpListener;
+use tokio::sync::{OnceCell, oneshot};
+use tokio_rustls::TlsAcceptor;
+
+static CRYPTO_PROVIDER: OnceCell<()> = OnceCell::const_new();
+
+async fn install_crypto_provider() {
+    CRYPTO_PROVIDER
+        .get_or_init(|| async {
+            rustls::crypto::aws_lc_rs::default_provider()
+                .install_default()
+                .unwrap();
+        })
+        .await;
+}
+
+struct TestServer {
+    addr: SocketAddr,
+    shutdown_tx: Option<oneshot::Sender<()>>,
+}
+
+impl Drop for TestServer {
+    fn drop(&mut self) {
+        if let Some(tx) = self.shutdown_tx.take() {
+            let _ = tx.send(());
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum HttpVersion {
+    Http1,
+    Http2,
+}
+
+async fn run_server(version: HttpVersion) -> Result<TestServer> {
+    install_crypto_provider().await;
+    let provider = rustls::crypto::aws_lc_rs::default_provider();
+
+    let ca_cert = Path::new("tests/tls/ca.crt");
+    let server_cert = Path::new("tests/tls/server.crt");
+    let server_key = Path::new("tests/tls/server.key");
+
+    let mut root_store = RootCertStore::empty();
+    let ca_certs = load_certs(ca_cert).await?;
+    root_store.add_parsable_certificates(ca_certs);
+    let client_auth = WebPkiClientVerifier::builder(root_store.into()).build()?;
+
+    let mut server_config = ServerConfig::builder_with_provider(provider.into())
+        .with_protocol_versions(&[&rustls::version::TLS12, &rustls::version::TLS13])?
+        .with_client_cert_verifier(client_auth)
+        .with_single_cert(load_certs(server_cert).await?, load_key(server_key).await?)
+        .context("Failed to create TLS server config")?;
+    if version == HttpVersion::Http2 {
+        server_config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+    }
+
+    let acceptor = TlsAcceptor::from(Arc::new(server_config));
+    let service = service_fn(|_req| async {
+        Ok::<_, Infallible>(Response::new(Full::new(Bytes::from("Hello"))))
+    });
+    let addr = SocketAddr::from(([127, 0, 0, 1], 0));
+    let listener = TcpListener::bind(addr).await?;
+    let server_addr = listener.local_addr()?;
+    let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
+
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+               res = listener.accept() => {
+                    let (stream, _peer_addr) = match res {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    };
+                    let acceptor = acceptor.clone();
+                    let service = service;
+                    tokio::spawn(async move {
+                        if let Ok(tls_stream) = acceptor.accept(stream).await {
+                            let io = TokioIo::new(tls_stream);
+                            match version {
+                                HttpVersion::Http1 => {
+                                    hyper::server::conn::http1::Builder::new().serve_connection(io, service).await.ok();
+                                }
+                                HttpVersion::Http2 => {
+                                    hyper::server::conn::http2::Builder::new(TokioExecutor::new())
+                                        .serve_connection(io, service)
+                                        .await
+                                        .ok();
+                                }
+                            }
+                        }
+                    });
+                },
+                _ = &mut shutdown_rx => {
+                    break;
+                }
+            }
+        }
+    });
+
+    Ok(TestServer {
+        addr: server_addr,
+        shutdown_tx: Some(shutdown_tx),
+    })
+}
+
+async fn load_certs(path: &Path) -> Result<Vec<CertificateDer>> {
+    let cert = fs::read(path).await?;
+    let mut reader = BufReader::new(cert.as_slice());
+    certs(&mut reader)
+        .collect::<Result<Vec<_>, _>>()
+        .context(format!("Failed to load certificate: {path:?}"))
+}
+
+async fn load_key(path: &Path) -> Result<PrivateKeyDer> {
+    let key = fs::read(path).await?;
+    let mut reader = std::io::BufReader::new(key.as_slice());
+    private_key(&mut reader)?.context(format!("Failed to load key: {path:?}"))
+}
 
 #[tokio::test]
 async fn run_get() {
@@ -792,4 +925,90 @@ async fn run_from_dir_failure_save_responses() {
     assert!(PathBuf::from(format!("{dir}/failure-1-test1.json")).exists());
     assert!(PathBuf::from(format!("{dir}/failure-2-test2.json")).exists());
     assert!(PathBuf::from(format!("{dir}/failure-3-test3.json")).exists());
+}
+
+#[tokio::test]
+async fn run_mtls_http1_valid_certs() {
+    let test_server = run_server(HttpVersion::Http1).await.unwrap();
+
+    let runner = LoadTestRunner::new(
+        format!("https://{}", test_server.addr).as_str(),
+        5,
+        2,
+        &Some("tests/tls/ca.crt".into()),
+        &Some("tests/tls/client.crt".into()),
+        &Some("tests/tls/client.key".into()),
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run(HttpMethod::Get, None, None, &None, |_| {})
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 5);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 5);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_mtls_http2_valid_certs() {
+    let test_server = run_server(HttpVersion::Http2).await.unwrap();
+
+    let runner = LoadTestRunner::new(
+        format!("https://{}", test_server.addr).as_str(),
+        5,
+        2,
+        &Some("tests/tls/ca.crt".into()),
+        &Some("tests/tls/client.crt".into()),
+        &Some("tests/tls/client.key".into()),
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run(HttpMethod::Get, None, None, &None, |_| {})
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 5);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 5);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_mtls_invalid_certs() {
+    let test_server = run_server(HttpVersion::Http2).await.unwrap();
+
+    let runner = LoadTestRunner::new(
+        format!("https://{}", test_server.addr).as_str(),
+        5,
+        2,
+        &Some("tests/tls/untrusted-ca.crt".into()),
+        &Some("tests/tls/untrusted-client.crt".into()),
+        &Some("tests/tls/untrusted-client.key".into()),
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run(HttpMethod::Get, None, None, &None, |_| {})
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 0);
+    assert_eq!(result.failures, 5);
+    assert_eq!(result.completed, 5);
 }
