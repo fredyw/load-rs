@@ -680,7 +680,7 @@ impl LoadTestRunner {
             .client
             .post(&self.url)
             .headers(headers)
-            .body(body.clone())
+            .body(body)
             .send()
             .await?;
         Ok(if error_for_status {
@@ -700,7 +700,7 @@ impl LoadTestRunner {
             .client
             .put(&self.url)
             .headers(headers)
-            .body(body.clone())
+            .body(body)
             .send()
             .await?;
         Ok(if error_for_status {
@@ -720,7 +720,7 @@ impl LoadTestRunner {
             .client
             .delete(&self.url)
             .headers(headers)
-            .body(body.clone())
+            .body(body)
             .send()
             .await?;
         Ok(if error_for_status {
@@ -740,7 +740,7 @@ impl LoadTestRunner {
             .client
             .patch(&self.url)
             .headers(headers)
-            .body(body.clone())
+            .body(body)
             .send()
             .await?;
         Ok(if error_for_status {
