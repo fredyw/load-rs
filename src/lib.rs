@@ -807,12 +807,16 @@ impl LoadTestRunner {
             .iter()
             .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
             .collect();
-        let body = response.text().await?;
+        let body_bytes = response.bytes().await?;
+        let body_string: String = match str::from_utf8(&body_bytes) {
+            Ok(bytes) => bytes.to_string(),
+            Err(_) => BASE64_STANDARD.encode(&body_bytes),
+        };
         let output = json!({
             "version": version,
             "status": status_code,
             "headers": headers,
-            "body": body,
+            "body": body_string,
             "duration": duration,
         });
         Ok(fs::write(output_file, serde_json::to_string_pretty(&output)?).await?)
