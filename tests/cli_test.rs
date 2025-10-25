@@ -503,3 +503,36 @@ fn run_data_dir_save_responses() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn run_manifest_save_responses() -> Result<()> {
+    let dir = "/tmp/load-rs/cli3";
+    let output_dir: PathBuf = dir.into();
+    if output_dir.exists() {
+        std::fs::remove_dir_all(&output_dir).unwrap();
+    }
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args([
+        "-n",
+        "3",
+        "-c",
+        "2",
+        "-X",
+        "POST",
+        "-m",
+        "tests/test_manifest.jsonl",
+        "-O",
+        "sequential",
+        "-o",
+        dir,
+        "https://mockhttp.org/post",
+    ]);
+
+    cmd.assert().success();
+
+    assert!(PathBuf::from(format!("{dir}/success-1.json")).exists());
+    assert!(PathBuf::from(format!("{dir}/success-2.json")).exists());
+    assert!(PathBuf::from(format!("{dir}/success-3.json")).exists());
+
+    Ok(())
+}

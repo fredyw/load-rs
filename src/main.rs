@@ -43,6 +43,10 @@ struct Args {
     #[arg(short = 'i', long = "data-dir", group = "request_body")]
     data_dir: Option<PathBuf>,
 
+    /// Request manifest file (JSON Lines format).
+    #[arg(short = 'm', long = "manifest-file", group = "request_body")]
+    manifest_file: Option<PathBuf>,
+
     /// Custom CA certificate file (PEM format).
     #[arg(short = 'C', long = "cacert")]
     ca_cert: Option<PathBuf>,
@@ -153,6 +157,25 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 },
             )
             .await?
+    } else if let Some(manifest_file) = &args.manifest_file {
+        runner
+            .run_from_manifest(
+                args.method,
+                manifest_file,
+                args.order,
+                &args.output_dir,
+                |result| {
+                    pb.set_message(format!(
+                        "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?}",
+                        style(result.success).green(),
+                        style(result.failures).red(),
+                        result.rps,
+                        result.avg
+                    ));
+                    pb.inc(1);
+                },
+            )
+            .await?
     } else {
         runner
             .run(
@@ -191,6 +214,10 @@ async fn debug(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 data_dir,
                 args.order,
             )
+            .await?
+    } else if let Some(manifest_file) = &args.manifest_file {
+        runner
+            .debug_from_manifest(args.method, manifest_file, args.order)
             .await?
     } else {
         runner

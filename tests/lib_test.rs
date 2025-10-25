@@ -574,6 +574,176 @@ async fn run_from_dir_requests_greater_than_files_random() {
 }
 
 #[tokio::test]
+async fn run_from_manifest_random() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        5,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Random,
+            &None,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 5);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 5);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_manifest_requests_less_than_files_sequential() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        3,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Sequential,
+            &None,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 3);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 3);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_manifest_requests_greater_than_files_sequential() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        7,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Sequential,
+            &None,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 7);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 7);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_manifest_requests_less_than_files_random() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        3,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Random,
+            &None,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 3);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 3);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
+async fn run_from_manifest_requests_greater_than_files_random() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        7,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Random,
+            &None,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 7);
+    assert_eq!(result.failures, 0);
+    assert_eq!(result.completed, 7);
+    assert!(result.p50 > Default::default());
+    assert!(result.p90 > Default::default());
+    assert!(result.p95 > Default::default());
+    assert!(result.avg > Default::default());
+}
+
+#[tokio::test]
 async fn debug_get() {
     let runner = LoadTestRunner::new("https://mockhttp.org/get", 5, 2, &None, &None, &None, &None)
         .await
@@ -786,6 +956,58 @@ async fn debug_from_dir_random() {
 }
 
 #[tokio::test]
+async fn debug_from_manifest_sequential() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        5,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let response = runner
+        .debug_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Sequential,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+}
+
+#[tokio::test]
+async fn debug_from_manifest_random() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        5,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let response = runner
+        .debug_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Random,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+}
+
+#[tokio::test]
 async fn run_success_save_responses() {
     let dir = "/tmp/load-rs/lib1";
     let output_dir: PathBuf = dir.into();
@@ -925,6 +1147,72 @@ async fn run_from_dir_failure_save_responses() {
     assert!(PathBuf::from(format!("{dir}/failure-1-test1.json")).exists());
     assert!(PathBuf::from(format!("{dir}/failure-2-test2.json")).exists());
     assert!(PathBuf::from(format!("{dir}/failure-3-test3.json")).exists());
+}
+
+#[tokio::test]
+async fn run_from_manifest_success_save_responses() {
+    let dir = "/tmp/load-rs/lib5";
+    let output_dir: PathBuf = dir.into();
+    if output_dir.exists() {
+        fs::remove_dir_all(&output_dir).await.unwrap();
+    }
+
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/post",
+        3,
+        2,
+        &None,
+        &None,
+        &None,
+        &None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Sequential,
+            &Some(output_dir),
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, 3);
+    assert!(PathBuf::from(format!("{dir}/success-1.json")).exists());
+    assert!(PathBuf::from(format!("{dir}/success-2.json")).exists());
+    assert!(PathBuf::from(format!("{dir}/success-3.json")).exists());
+}
+
+#[tokio::test]
+async fn run_from_manifest_failure_save_responses() {
+    let dir = "/tmp/load-rs/lib6";
+    let output_dir: PathBuf = dir.into();
+    if output_dir.exists() {
+        fs::remove_dir_all(&output_dir).await.unwrap();
+    }
+
+    let runner = LoadTestRunner::new("https://mockhttp.org/get", 3, 2, &None, &None, &None, &None)
+        .await
+        .unwrap();
+
+    let result = runner
+        .run_from_manifest(
+            HttpMethod::Post,
+            &"tests/test_manifest.jsonl".into(),
+            Order::Sequential,
+            &Some(output_dir),
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.failures, 3);
+    assert!(PathBuf::from(format!("{dir}/failure-1.json")).exists());
+    assert!(PathBuf::from(format!("{dir}/failure-2.json")).exists());
+    assert!(PathBuf::from(format!("{dir}/failure-3.json")).exists());
 }
 
 #[tokio::test]

@@ -1,0 +1,2 @@
+{"headers": {"content-type": "application/json", "x-request-id": "123"}, "body": "{\"message\": \"hello\"}"}
+{"headers": {"content-type": "application/json", "x-request-id": "234"}, "body": "{\"message\": \"world\"}"}
