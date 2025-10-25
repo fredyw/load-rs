@@ -7,7 +7,8 @@ A simple load testing tool written in Rust.
 
 ![Demo](demo.gif)
 
-## Usage
+### Usage
+
 ```
 Usage: load-rs [OPTIONS] --requests <REQUESTS> --concurrency <CONCURRENCY> <URL>
 
@@ -33,3 +34,63 @@ Options:
   -h, --help                           Print help
   -V, --version                        Print version
 ```
+
+### Examples
+
+**GET request**
+
+```
+load-rs -n 100 -c 10 http://localhost:8080
+```
+
+**POST request with a JSON body**
+
+```
+load-rs -n 100 -c 10 -X POST -d '{"key": "value"}' http://localhost:8080
+```
+
+**POST request with a body from a file**
+
+```
+load-rs -n 100 -c 10 -X POST -D /path/to/body.json http://localhost:8080
+```
+
+**POST request with bodies from a directory**
+
+```
+load-rs -n 100 -c 10 -X POST -i /path/to/bodies http://localhost:8080
+```
+
+**POST request with a manifest file**
+
+```
+load-rs -n 100 -c 10 -X POST -m /path/to/manifest.jsonl http://localhost:8080
+```
+
+## Building
+
+To build the project, you need to have Rust installed. You can install it from [here](https://www.rust-lang.org/tools/install).
+
+Once you have Rust installed, you can build the project by running the following command:
+
+```
+./build.sh --release
+```
+
+The binary will be located in `target/release/load-rs`.
+
+## Testing
+
+To run the tests, you can use the following command:
+
+```
+./test.sh
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a pull request or open an issue.
+
+## License
+
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
