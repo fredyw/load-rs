@@ -229,7 +229,7 @@ impl LoadTestRunner {
     where
         T: Fn(&LoadTestResult),
     {
-        let body = Self::get_data(&body.unwrap_or(Body::Data(Bytes::new()))).await?;
+        let body = Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?;
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
                 let headers = header.clone().unwrap_or_default();
@@ -422,7 +422,7 @@ impl LoadTestRunner {
         body: Option<Body>,
     ) -> Result<Response> {
         let headers = header.unwrap_or_default();
-        let body = Self::get_data(&body.unwrap_or(Body::Data(Bytes::new()))).await?;
+        let body = Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?;
         self.send_request(method, headers, body).await
     }
 
@@ -551,9 +551,9 @@ impl LoadTestRunner {
         Ok(Identity::from_pem(&pem_bytes)?)
     }
 
-    async fn get_data(body: &Body) -> Result<Bytes> {
+    async fn get_data(body: Body) -> Result<Bytes> {
         match body {
-            Body::Data(data) => Ok(data.clone()),
+            Body::Data(data) => Ok(data),
             Body::DataFile(data_file) => {
                 if !data_file.is_file() {
                     bail!(
@@ -966,7 +966,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_data_succeeds() {
-        let bytes = LoadTestRunner::get_data(&Body::Data("Hello".into()))
+        let bytes = LoadTestRunner::get_data(Body::Data("Hello".into()))
             .await
             .unwrap();
 
@@ -976,7 +976,7 @@ mod tests {
     #[tokio::test]
     async fn get_data_file_succeeds() {
         let bytes =
-            LoadTestRunner::get_data(&Body::DataFile("tests/test_requests/test1.json".into()))
+            LoadTestRunner::get_data(Body::DataFile("tests/test_requests/test1.json".into()))
                 .await
                 .unwrap();
 
@@ -985,7 +985,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_data_file_does_not_exist_fails() {
-        let err = LoadTestRunner::get_data(&Body::DataFile("doesnotexist".into()))
+        let err = LoadTestRunner::get_data(Body::DataFile("doesnotexist".into()))
             .await
             .unwrap_err();
 
@@ -997,7 +997,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_invalid_data_file_fails() {
-        let err = LoadTestRunner::get_data(&Body::DataFile("tests/test_requests".into()))
+        let err = LoadTestRunner::get_data(Body::DataFile("tests/test_requests".into()))
             .await
             .unwrap_err();
 
