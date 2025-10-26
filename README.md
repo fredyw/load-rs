@@ -12,6 +12,7 @@ A simple load testing tool written in Rust.
   - [Output Files](#output-files)
   - [Request Manifest](#request-manifest)
   - [Order](#order)
+  - [TLS](#tls)
   - [Examples](#examples)
 - [Building](#building)
 - [Testing](#testing)
@@ -90,6 +91,15 @@ either the `--data-dir` or `--manifest-file` option. The following values are su
 
 - `sequential` (default): Requests are sent in the order they appear in the directory or manifest file.
 - `random`: Requests are sent in a random order.
+
+#### TLS
+
+`load-rs` supports several options for configuring TLS:
+
+- `-C, --cacert <CA_CERT>`: Use a custom CA certificate file (PEM format) to verify the server's certificate.
+- `-E, --cert <CERT>`: Use a client certificate file (PEM format) for mutual TLS authentication.
+- `-k, --key <KEY>`: Use a private key file (PEM format) for the client certificate.
+- `-I, --insecure`: Allows insecure connections by skipping TLS certificate verification.
 
 #### Examples
 
