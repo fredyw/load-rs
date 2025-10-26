@@ -13,6 +13,7 @@ A simple load testing tool written in Rust.
   - [Request Manifest](#request-manifest)
   - [Order](#order)
   - [TLS](#tls)
+  - [Statistics](#statistics)
   - [Debugging](#debugging)
   - [Examples](#examples)
 - [Building](#building)
@@ -48,6 +49,7 @@ Options:
   -O, --order <ORDER>                  Order to process files from --data-dir or --manifest-file [default: sequential]
   -o, --output-dir <OUTPUT_DIR>        Directory to save responses to
   -G, --debug                          Performs a single request and dumps the response
+  -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: success]
   -h, --help                           Print help
   -V, --version                        Print version
 ```
@@ -102,12 +104,6 @@ either the `--data-dir` or `--manifest-file` option. The following values are su
 - `-k, --key <KEY>`: Use a private key file (PEM format) for the client certificate.
 - `-I, --insecure`: Allows insecure connections by skipping TLS certificate verification.
 
-#### Debugging
-
-The `-G` or `--debug` option can be used to perform a single request and dump the response to the console.
-This is useful for verifying that your requests are correct and that the server is responding as expected.
-When using this option, the `-n`, `-c`, and `-o` options are ignored.
-
 #### Statistics
 
 The `s` or `--stats` option allows you to control which requests are included in the statistics. The following
@@ -116,6 +112,12 @@ values are supported:
 - `success` (default): Only include successful requests in the statistics.
 - `error`: Only include failed requests in the statistics.
 - `all`: Include all requests (successful and failed) in the statistics.
+
+#### Debugging
+
+The `-G` or `--debug` option can be used to perform a single request and dump the response to the console.
+This is useful for verifying that your requests are correct and that the server is responding as expected.
+When using this option, the `-n`, `-c`, and `-o` options are ignored.
 
 #### Examples
 
