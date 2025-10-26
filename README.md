@@ -108,6 +108,15 @@ The `-G` or `--debug` option can be used to perform a single request and dump th
 This is useful for verifying that your requests are correct and that the server is responding as expected.
 When using this option, the `-n`, `-c`, and `-o` options are ignored.
 
+#### Statistics
+
+The `s` or `--stats` option allows you to control which requests are included in the statistics. The following
+values are supported:
+
+- `success` (default): Only include successful requests in the statistics.
+- `error`: Only include failed requests in the statistics.
+- `all`: Include all requests (successful and failed) in the statistics.
+
 #### Examples
 
 **GET request**
