@@ -19,6 +19,7 @@ A simple load testing tool written in Rust.
   - [Debugging](#debugging)
   - [Examples](#examples)
 - [Building](#building)
+- [Installing](#installing)
 - [Testing](#testing)
 - [Contributing](#contributing)
 - [License](#license)
