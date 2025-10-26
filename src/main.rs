@@ -32,7 +32,7 @@ struct Args {
     header: Vec<String>,
 
     /// Request body as a string.
-    #[arg(short = 'd', long, group = "request_body")]
+    #[arg(short = 'd', long = "data", group = "request_body")]
     data: Option<String>,
 
     /// File to read the request body from.
