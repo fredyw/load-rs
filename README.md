@@ -11,6 +11,7 @@ A simple load testing tool written in Rust.
   - [Command Line Options](#command-line-options)
   - [Output Files](#output-files)
   - [Request Manifest](#request-manifest)
+  - [Order](#order)
   - [Examples](#examples)
 - [Building](#building)
 - [Testing](#testing)
@@ -81,6 +82,14 @@ that defines a request. The following fields are supported:
 {"headers": {"Content-Type": "application/json"}, "body": "{\"key\": \"value2\"}"}
 {"headers": {"Content-Type": "application/octet-stream"}, "binary_body": "SGVsbG8gd29ybGQ="}
 ```
+
+#### Order
+
+The `-O` or `--order` option allows you to control the order in which requests are sent when using
+either the `--data-dir` or `--manifest-file` option. The following values are supported:
+
+- `sequential` (default): Requests are sent in the order they appear in the directory or manifest file.
+- `random`: Requests are sent in a random order.
 
 #### Examples
 
