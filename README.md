@@ -13,6 +13,7 @@ A simple load testing tool written in Rust.
   - [Request Manifest](#request-manifest)
   - [Order](#order)
   - [TLS](#tls)
+  - [Debugging](#debugging)
   - [Examples](#examples)
 - [Building](#building)
 - [Testing](#testing)
@@ -100,6 +101,12 @@ either the `--data-dir` or `--manifest-file` option. The following values are su
 - `-E, --cert <CERT>`: Use a client certificate file (PEM format) for mutual TLS authentication.
 - `-k, --key <KEY>`: Use a private key file (PEM format) for the client certificate.
 - `-I, --insecure`: Allows insecure connections by skipping TLS certificate verification.
+
+#### Debugging
+
+The `-G` or `--debug` option can be used to perform a single request and dump the response to the console.
+This is useful for verifying that your requests are correct and that the server is responding as expected.
+When using this option, the `-n`, `-c`, and `-o` options are ignored.
 
 #### Examples
 
