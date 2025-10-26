@@ -5,6 +5,8 @@
 
 A simple load testing tool written in Rust.
 
+![Demo](demo.gif)
+
 ## Table of Contents
 
 - [Usage](#usage)
@@ -20,8 +22,6 @@ A simple load testing tool written in Rust.
 - [Testing](#testing)
 - [Contributing](#contributing)
 - [License](#license)
-
-![Demo](demo.gif)
 
 ### Usage
 
