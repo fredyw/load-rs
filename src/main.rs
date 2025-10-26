@@ -63,7 +63,7 @@ struct Args {
     #[arg(short = 'I', long)]
     insecure: Option<bool>,
 
-    /// Order to process files from --data-dir.
+    /// Order to process files from --data-dir or --manifest-file.
     #[arg(short = 'O', long, value_parser = parse_order, default_value = "sequential", requires = "data_dir")]
     order: Order,
 

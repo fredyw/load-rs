@@ -5,9 +5,23 @@
 
 A simple load testing tool written in Rust.
 
+## Table of Contents
+
+- [Usage](#usage)
+  - [Command Line Options](#command-line-options)
+  - [Output Files](#output-files)
+  - [Request Manifest](#request-manifest)
+  - [Examples](#examples)
+- [Building](#building)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+
 ![Demo](demo.gif)
 
 ### Usage
+
+#### Command Line Options
 
 ```
 Usage: load-rs [OPTIONS] --requests <REQUESTS> --concurrency <CONCURRENCY> <URL>
@@ -28,14 +42,47 @@ Options:
   -E, --cert <CERT>                    Public certificate file (PEM format)
   -k, --key <KEY>                      Private key file (PEM format)
   -I, --insecure <INSECURE>            Allows insecure connections by skipping TLS certificate verification [possible values: true, false]
-  -O, --order <ORDER>                  Order to process files from --data-dir [default: sequential]
+  -O, --order <ORDER>                  Order to process files from --data-dir or --manifest-file [default: sequential]
   -o, --output-dir <OUTPUT_DIR>        Directory to save responses to
   -G, --debug                          Performs a single request and dumps the response
   -h, --help                           Print help
   -V, --version                        Print version
 ```
 
-### Examples
+#### Output Files
+
+When the `-o` or `--output-dir` option is specified, `load-rs` will save the response of each request
+to a file in the specified directory.
+
+The output file is a JSON object with the following fields:
+
+- `version`: The HTTP version of the response.
+- `status`: The HTTP status code of the response.
+- `headers`: A map of the response headers.
+- `body`: The response body as a string. If the body is not valid UTF-8, it will be base64-encoded.
+- `duration`: The duration of the request.
+- `error`: The error message if the request failed.
+
+#### Request Manifest
+
+The manifest file is a [JSON Lines](https://jsonlines.org/) file where each line is a JSON object
+that defines a request. The following fields are supported:
+
+- `headers`: A map of HTTP headers to be sent with the request.
+- `body`: The request body as a string.
+- `binary_body`: The request body as a base64-encoded string.
+
+**Note:** If both `body` and `binary_body` are specified, `body` will be used.
+
+**Example `manifest.jsonl`**
+
+```json
+{"headers": {"Content-Type": "application/json"}, "body": "{\"key\": \"value1\"}"}
+{"headers": {"Content-Type": "application/json"}, "body": "{\"key\": \"value2\"}"}
+{"headers": {"Content-Type": "application/octet-stream"}, "binary_body": "SGVsbG8gd29ybGQ="}
+```
+
+#### Examples
 
 **GET request**
 
@@ -67,7 +114,7 @@ load-rs -n 100 -c 10 -X POST -i /path/to/bodies http://localhost:8080
 load-rs -n 100 -c 10 -X POST -m /path/to/manifest.jsonl http://localhost:8080
 ```
 
-## Building
+### Building
 
 To build the project, you need to have Rust installed. You can install it from [here](https://www.rust-lang.org/tools/install).
 
@@ -79,7 +126,7 @@ Once you have Rust installed, you can build the project by running the following
 
 The binary will be located in `target/release/load-rs`.
 
-## Testing
+### Testing
 
 To run the tests, you can use the following command:
 
@@ -87,10 +134,10 @@ To run the tests, you can use the following command:
 ./test.sh
 ```
 
-## Contributing
+### Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue.
 
-## License
+### License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
