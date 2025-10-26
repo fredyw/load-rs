@@ -3,7 +3,7 @@ use bytes::Bytes;
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use load_rs::{Body, HttpMethod, LoadTestRunner, Order};
+use load_rs::{Body, HttpMethod, LoadTestRunner, Order, Stats};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -32,7 +32,7 @@ struct Args {
     header: Vec<String>,
 
     /// Request body as a string.
-    #[arg(short = 'd', long = "data", group = "request_body")]
+    #[arg(short = 'd', long, group = "request_body")]
     data: Option<String>,
 
     /// File to read the request body from.
@@ -52,11 +52,11 @@ struct Args {
     ca_cert: Option<PathBuf>,
 
     /// Public certificate file (PEM format).
-    #[arg(short = 'E', long = "cert", requires = "key")]
+    #[arg(short = 'E', long, requires = "key")]
     cert: Option<PathBuf>,
 
     /// Private key file (PEM format).
-    #[arg(short = 'k', long = "key", requires = "cert")]
+    #[arg(short = 'k', long, requires = "cert")]
     key: Option<PathBuf>,
 
     /// Allows insecure connections by skipping TLS certificate verification.
@@ -74,6 +74,10 @@ struct Args {
     /// Performs a single request and dumps the response.
     #[arg(short = 'G', long)]
     debug: bool,
+
+    /// Specifies which requests to include in the statistics.
+    #[arg(short = 's', long, value_parser = parse_stats, default_value = "success")]
+    stats: Stats,
 }
 
 fn parse_http_method(s: &str) -> Result<HttpMethod> {
@@ -93,6 +97,15 @@ fn parse_order(s: &str) -> Result<Order> {
         "sequential" => Ok(Order::Sequential),
         "random" => Ok(Order::Random),
         _ => bail!("'{s}' is not a valid read order"),
+    }
+}
+
+fn parse_stats(s: &str) -> Result<Stats> {
+    match s.to_ascii_lowercase().as_str() {
+        "success" => Ok(Stats::Success),
+        "error" => Ok(Stats::Error),
+        "all" => Ok(Stats::All),
+        _ => bail!("'{s}' is not a valid stats"),
     }
 }
 
@@ -245,6 +258,7 @@ async fn main() -> Result<()> {
         &args.url,
         args.requests,
         args.concurrency,
+        args.stats,
         &args.ca_cert,
         &args.cert,
         &args.key,

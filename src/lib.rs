@@ -29,6 +29,9 @@ pub struct LoadTestRunner {
     /// Number of concurrent requests to run at a time.
     pub concurrency: u32,
 
+    /// Specifies which requests to include in the statistics.
+    pub stats: Stats,
+
     /// HTTP client.
     client: Client,
 }
@@ -126,6 +129,19 @@ pub enum Order {
     Random,
 }
 
+/// Specifies which requests to include in the statistics.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Stats {
+    /// Only include successful requests in the statistics.
+    Success,
+
+    /// Only include failed requests in the statistics.
+    Error,
+
+    /// Include all requests (successful and failed) in the statistics.
+    All,
+}
+
 /// JSON representation of manifest request file.
 #[derive(Debug, Clone, Deserialize)]
 struct RequestTemplate {
@@ -143,16 +159,19 @@ impl LoadTestRunner {
     /// * `url`: Target URL to send requests to.
     /// * `requests`: Total number of requests to send.
     /// * `concurrency`: Number of concurrent requests to run at a time.
+    /// * `stats`: Specifies which requests to include in the statistics.
     /// * `ca_cert`: Custom CA certificate file (PEM format).
     /// * `cert`: Public certificate file (PEM format).
     /// * `key`: Private key file (PEM format).
     ///
     /// # Returns
     /// A `Result` containing the new `LoadTestRunner` instance if successful.
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         url: &str,
         requests: u32,
         concurrency: u32,
+        stats: Stats,
         ca_cert: &Option<PathBuf>,
         cert: &Option<PathBuf>,
         key: &Option<PathBuf>,
@@ -193,6 +212,7 @@ impl LoadTestRunner {
             url: url.to_owned(),
             requests,
             concurrency,
+            stats,
             client: builder.build()?,
         })
     }
@@ -605,17 +625,9 @@ impl LoadTestRunner {
             match res {
                 Ok(response) => {
                     result.success += 1;
-                    // Only capture the duration for successful request.
-                    result.total_duration += duration;
-                    result.rps = result.success as f64 / test_time.elapsed().as_secs_f64();
-                    result.avg = result.total_duration / result.completed;
-                    result.min = if result.min == Duration::default() {
-                        duration
-                    } else {
-                        result.min.min(duration)
-                    };
-                    result.max = result.max.max(duration);
-                    result.durations.push(duration);
+                    if self.stats == Stats::All || self.stats == Stats::Success {
+                        Self::update_stats(&mut result, duration, test_time)
+                    }
                     if let Some(output_dir) = output_dir {
                         let output_file = Self::get_output_file(
                             self.requests,
@@ -629,6 +641,9 @@ impl LoadTestRunner {
                 }
                 Err(error) => {
                     result.failures += 1;
+                    if self.stats == Stats::All || self.stats == Stats::Error {
+                        Self::update_stats(&mut result, duration, test_time)
+                    }
                     if let Some(output_dir) = output_dir {
                         let output_file = Self::get_output_file(
                             self.requests,
@@ -659,6 +674,19 @@ impl LoadTestRunner {
         result.rps = result.success as f64 / test_time.elapsed().as_secs_f64();
 
         Ok(result)
+    }
+
+    fn update_stats(result: &mut LoadTestResult, duration: Duration, test_time: Instant) {
+        result.total_duration += duration;
+        result.rps = result.success as f64 / test_time.elapsed().as_secs_f64();
+        result.avg = result.total_duration / result.completed;
+        result.min = if result.min == Duration::default() {
+            duration
+        } else {
+            result.min.min(duration)
+        };
+        result.max = result.max.max(duration);
+        result.durations.push(duration);
     }
 
     async fn get(&self, headers: HeaderMap, error_for_status: bool) -> Result<Response> {
@@ -836,10 +864,18 @@ mod tests {
 
     #[tokio::test]
     async fn new_succeeds() {
-        let result =
-            LoadTestRunner::new("http://localhost:8080", 10, 2, &None, &None, &None, &None)
-                .await
-                .unwrap();
+        let result = LoadTestRunner::new(
+            "http://localhost:8080",
+            10,
+            2,
+            Stats::Success,
+            &None,
+            &None,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(result.url, "http://localhost:8080");
         assert_eq!(result.requests, 10);
@@ -848,7 +884,7 @@ mod tests {
 
     #[tokio::test]
     async fn new_url_is_empty_fails() {
-        let result = LoadTestRunner::new("", 2, 2, &None, &None, &None, &None)
+        let result = LoadTestRunner::new("", 2, 2, Stats::Success, &None, &None, &None, &None)
             .await
             .unwrap_err();
 
@@ -857,27 +893,54 @@ mod tests {
 
     #[tokio::test]
     async fn new_num_requests_is_zero_fails() {
-        let result = LoadTestRunner::new("http://localhost:8080", 0, 2, &None, &None, &None, &None)
-            .await
-            .unwrap_err();
+        let result = LoadTestRunner::new(
+            "http://localhost:8080",
+            0,
+            2,
+            Stats::Success,
+            &None,
+            &None,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap_err();
 
         assert_eq!(result.to_string(), "Number of requests cannot be zero");
     }
 
     #[tokio::test]
     async fn new_num_concurrency_is_zero_fails() {
-        let result = LoadTestRunner::new("http://localhost:8080", 2, 0, &None, &None, &None, &None)
-            .await
-            .unwrap_err();
+        let result = LoadTestRunner::new(
+            "http://localhost:8080",
+            2,
+            0,
+            Stats::Success,
+            &None,
+            &None,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap_err();
 
         assert_eq!(result.to_string(), "Number of concurrency cannot be zero");
     }
 
     #[tokio::test]
     async fn new_num_concurrency_greater_than_num_requests_fails() {
-        let result = LoadTestRunner::new("http://localhost:8080", 2, 3, &None, &None, &None, &None)
-            .await
-            .unwrap_err();
+        let result = LoadTestRunner::new(
+            "http://localhost:8080",
+            2,
+            3,
+            Stats::Success,
+            &None,
+            &None,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap_err();
 
         assert_eq!(
             result.to_string(),
@@ -891,6 +954,7 @@ mod tests {
             "http://localhost:8080",
             10,
             2,
+            Stats::Success,
             &Some("doesnotexist".into()),
             &None,
             &None,
@@ -911,6 +975,7 @@ mod tests {
             "http://localhost:8080",
             10,
             2,
+            Stats::Success,
             &None,
             &Some("doesnotexist".into()),
             &Some("tests/tls/key.pem".into()),
@@ -931,6 +996,7 @@ mod tests {
             "http://localhost:8080",
             10,
             2,
+            Stats::Success,
             &None,
             &Some("tests/tls/client.crt".into()),
             &Some("doesnotexist".into()),
