@@ -163,6 +163,14 @@ Once you have Rust installed, you can build the project by running the following
 
 The binary will be located in `target/release/load-rs`.
 
+### Installing
+
+To install `load-rs`, you can use the following command.:
+
+```
+./install.sh
+```
+
 ### Testing
 
 To run the tests, you can use the following command:
