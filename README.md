@@ -166,7 +166,7 @@ The binary will be located in `target/release/load-rs`.
 
 ### Installing
 
-To install `load-rs`, you can use the following command.:
+To install `load-rs`, you can use the following command.
 
 ```
 ./install.sh
@@ -174,7 +174,7 @@ To install `load-rs`, you can use the following command.:
 
 ### Testing
 
-To run the tests, you can use the following command:
+To run the tests, you can use the following command.
 
 ```
 ./test.sh
