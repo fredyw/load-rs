@@ -175,7 +175,7 @@ impl LoadTestRunner {
         ca_cert: &Option<PathBuf>,
         cert: &Option<PathBuf>,
         key: &Option<PathBuf>,
-        insecure: &Option<bool>,
+        insecure: bool,
     ) -> Result<Self> {
         if url.is_empty() {
             bail!("URL cannot be empty");
@@ -193,7 +193,7 @@ impl LoadTestRunner {
         }
         let mut builder = Client::builder()
             .use_rustls_tls()
-            .danger_accept_invalid_certs(insecure.unwrap_or(false));
+            .danger_accept_invalid_certs(insecure);
         if let Some(ca_cert_path) = ca_cert {
             if !ca_cert_path.is_file() {
                 bail!(
@@ -872,7 +872,7 @@ mod tests {
             &None,
             &None,
             &None,
-            &None,
+            false,
         )
         .await
         .unwrap();
@@ -884,7 +884,7 @@ mod tests {
 
     #[tokio::test]
     async fn new_url_is_empty_fails() {
-        let result = LoadTestRunner::new("", 2, 2, Stats::Success, &None, &None, &None, &None)
+        let result = LoadTestRunner::new("", 2, 2, Stats::Success, &None, &None, &None, false)
             .await
             .unwrap_err();
 
@@ -901,7 +901,7 @@ mod tests {
             &None,
             &None,
             &None,
-            &None,
+            false,
         )
         .await
         .unwrap_err();
@@ -919,7 +919,7 @@ mod tests {
             &None,
             &None,
             &None,
-            &None,
+            false,
         )
         .await
         .unwrap_err();
@@ -937,7 +937,7 @@ mod tests {
             &None,
             &None,
             &None,
-            &None,
+            false,
         )
         .await
         .unwrap_err();
@@ -958,7 +958,7 @@ mod tests {
             &Some("doesnotexist".into()),
             &None,
             &None,
-            &None,
+            false,
         )
         .await
         .unwrap_err();
@@ -979,7 +979,7 @@ mod tests {
             &None,
             &Some("doesnotexist".into()),
             &Some("tests/tls/key.pem".into()),
-            &None,
+            false,
         )
         .await
         .unwrap_err();
@@ -1000,7 +1000,7 @@ mod tests {
             &None,
             &Some("tests/tls/client.crt".into()),
             &Some("doesnotexist".into()),
-            &None,
+            false,
         )
         .await
         .unwrap_err();

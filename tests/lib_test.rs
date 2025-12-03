@@ -149,7 +149,7 @@ async fn run_get() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -178,7 +178,7 @@ async fn run_head() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -207,7 +207,7 @@ async fn run_post() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -244,7 +244,7 @@ async fn run_put() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -281,7 +281,7 @@ async fn run_patch() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -318,7 +318,7 @@ async fn run_delete() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -355,7 +355,7 @@ async fn run_from_dir_sequential() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -393,7 +393,7 @@ async fn run_from_data_file() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -430,7 +430,7 @@ async fn run_from_dir_random() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -468,7 +468,7 @@ async fn run_from_dir_requests_less_than_files_sequential() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -506,7 +506,7 @@ async fn run_from_dir_requests_greater_than_files_sequential() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -544,7 +544,7 @@ async fn run_from_dir_requests_less_than_files_random() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -582,7 +582,7 @@ async fn run_from_dir_requests_greater_than_files_random() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -620,7 +620,7 @@ async fn run_from_manifest_random() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -655,7 +655,7 @@ async fn run_from_manifest_requests_less_than_files_sequential() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -690,7 +690,7 @@ async fn run_from_manifest_requests_greater_than_files_sequential() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -725,7 +725,7 @@ async fn run_from_manifest_requests_less_than_files_random() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -760,7 +760,7 @@ async fn run_from_manifest_requests_greater_than_files_random() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -795,7 +795,7 @@ async fn debug_get() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -815,7 +815,7 @@ async fn debug_head() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -835,7 +835,7 @@ async fn debug_post() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -864,7 +864,7 @@ async fn debug_put() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -893,7 +893,7 @@ async fn debug_patch() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -922,7 +922,7 @@ async fn debug_delete() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -951,7 +951,7 @@ async fn debug_from_data_file() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -980,7 +980,7 @@ async fn debug_from_dir_sequential() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1010,7 +1010,7 @@ async fn debug_from_dir_random() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1040,7 +1040,7 @@ async fn debug_from_manifest_sequential() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1067,7 +1067,7 @@ async fn debug_from_manifest_random() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1100,7 +1100,7 @@ async fn run_success_save_responses() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1140,7 +1140,7 @@ async fn run_failure_save_responses() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1180,7 +1180,7 @@ async fn run_from_dir_success_save_responses() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1221,7 +1221,7 @@ async fn run_from_dir_failure_save_responses() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1262,7 +1262,7 @@ async fn run_from_manifest_success_save_responses() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1300,7 +1300,7 @@ async fn run_from_manifest_failure_save_responses() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1334,7 +1334,7 @@ async fn run_mtls_http1_valid_certs() {
         &Some("tests/tls/ca.crt".into()),
         &Some("tests/tls/client.crt".into()),
         &Some("tests/tls/client.key".into()),
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1365,7 +1365,7 @@ async fn run_mtls_http2_valid_certs() {
         &Some("tests/tls/ca.crt".into()),
         &Some("tests/tls/client.crt".into()),
         &Some("tests/tls/client.key".into()),
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1396,7 +1396,7 @@ async fn run_mtls_invalid_certs() {
         &Some("tests/tls/untrusted-ca.crt".into()),
         &Some("tests/tls/untrusted-client.crt".into()),
         &Some("tests/tls/untrusted-client.key".into()),
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1422,7 +1422,7 @@ async fn run_success_stats() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1457,7 +1457,7 @@ async fn run_success_stats() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1495,7 +1495,7 @@ async fn run_failure_stats() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1530,7 +1530,7 @@ async fn run_failure_stats() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1568,7 +1568,7 @@ async fn run_all_stats() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();
@@ -1603,7 +1603,7 @@ async fn run_all_stats() {
         &None,
         &None,
         &None,
-        &None,
+        false,
     )
     .await
     .unwrap();

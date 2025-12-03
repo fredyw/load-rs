@@ -46,7 +46,7 @@ Options:
   -C, --cacert <CA_CERT>               Custom CA certificate file (PEM format)
   -E, --cert <CERT>                    Public certificate file (PEM format)
   -k, --key <KEY>                      Private key file (PEM format)
-  -I, --insecure <INSECURE>            Allows insecure connections by skipping TLS certificate verification [possible values: true, false]
+  -I, --insecure                       Allows insecure connections by skipping TLS certificate verification
   -O, --order <ORDER>                  Order to process files from --data-dir or --manifest-file [default: sequential]
   -o, --output-dir <OUTPUT_DIR>        Directory to save responses to
   -G, --debug                          Performs a single request and dumps the response
