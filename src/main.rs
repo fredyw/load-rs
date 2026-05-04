@@ -131,18 +131,23 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "Status:  Success: {} | Failures: {}\nRate:    RPS: {} | Success: {} | Failure: {}\nLatency: Avg: {} | Filter: {:?}",
-                        style(result.success).green(),
-                        style(result.failures).red(),
+                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {:.2?}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {:.2?}\n  Max: {:.2?}",
+                        style(&args.url).cyan().underlined(),
+                        style(args.concurrency).yellow(),
                         style(format!("{:.1}", result.rps)).cyan(),
-                        style(format!("{:.1}%", result.success_rate)).green(),
-                        style(format!("{:.1}%", result.failure_rate)).red(),
-                        style(format!("{:.2?}", result.avg)).yellow(),
+                        style(result.elapsed).yellow(),
+                        style(result.completed).blue(),
+                        style(result.success).green(),
+                        result.success_rate,
+                        style(result.failures).red(),
+                        result.failure_rate,
                         match args.stats {
                             load_rs::Stats::Success => style(args.stats).green(),
                             load_rs::Stats::Error => style(args.stats).red(),
                             load_rs::Stats::All => style(args.stats).blue(),
-                        }
+                        },
+                        style(result.min).yellow(),
+                        style(result.max).yellow(),
                     ));
                     pb.set_position(result.completed as u64);
                 },
@@ -157,18 +162,23 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "Status:  Success: {} | Failures: {}\nRate:    RPS: {} | Success: {} | Failure: {}\nLatency: Avg: {} | Filter: {:?}",
-                        style(result.success).green(),
-                        style(result.failures).red(),
+                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {:.2?}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {:.2?}\n  Max: {:.2?}",
+                        style(&args.url).cyan().underlined(),
+                        style(args.concurrency).yellow(),
                         style(format!("{:.1}", result.rps)).cyan(),
-                        style(format!("{:.1}%", result.success_rate)).green(),
-                        style(format!("{:.1}%", result.failure_rate)).red(),
-                        style(format!("{:.2?}", result.avg)).yellow(),
+                        style(result.elapsed).yellow(),
+                        style(result.completed).blue(),
+                        style(result.success).green(),
+                        result.success_rate,
+                        style(result.failures).red(),
+                        result.failure_rate,
                         match args.stats {
                             load_rs::Stats::Success => style(args.stats).green(),
                             load_rs::Stats::Error => style(args.stats).red(),
                             load_rs::Stats::All => style(args.stats).blue(),
-                        }
+                        },
+                        style(result.min).yellow(),
+                        style(result.max).yellow(),
                     ));
                     pb.set_position(result.completed as u64);
                 },
@@ -183,20 +193,23 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "Status:  Success: {} | Failures: {}\nRate:    RPS: {} | Success: {} | Failure: {}\nLatency: Avg: {} | Min: {} | Max: {} | Filter: {:?}",
-                        style(result.success).green(),
-                        style(result.failures).red(),
+                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {:.2?}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {:.2?}\n  Max: {:.2?}",
+                        style(&args.url).cyan().underlined(),
+                        style(args.concurrency).yellow(),
                         style(format!("{:.1}", result.rps)).cyan(),
-                        style(format!("{:.1}%", result.success_rate)).green(),
-                        style(format!("{:.1}%", result.failure_rate)).red(),
-                        style(format!("{:.2?}", result.avg)).yellow(),
-                        style(format!("{:.2?}", result.min)).yellow(),
-                        style(format!("{:.2?}", result.max)).yellow(),
+                        style(result.elapsed).yellow(),
+                        style(result.completed).blue(),
+                        style(result.success).green(),
+                        result.success_rate,
+                        style(result.failures).red(),
+                        result.failure_rate,
                         match args.stats {
                             load_rs::Stats::Success => style(args.stats).green(),
                             load_rs::Stats::Error => style(args.stats).red(),
                             load_rs::Stats::All => style(args.stats).blue(),
-                        }
+                        },
+                        style(result.min).yellow(),
+                        style(result.max).yellow(),
                     ));
                     pb.set_position(result.completed as u64);
                 },
@@ -206,23 +219,25 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
     pb.finish_and_clear();
 
     println!("{}", style("Overview:").bold());
-    println!("  URL:         {}", style(&args.url).cyan().underlined());
+    println!("  URL: {}", style(&args.url).cyan().underlined());
     println!("  Concurrency: {}", style(args.concurrency).yellow());
+    println!("  RPS: {}", style(format!("{:.1}", result.rps)).cyan());
     println!(
-        "  Requests:    {} | {} Success ({}) | {} Failures ({})",
-        style(format!("{} Total", result.completed)).blue(),
-        style(result.success).green(),
-        style(format!("{:.1}%", result.success_rate)).green(),
-        style(result.failures).red(),
-        style(format!("{:.1}%", result.failure_rate)).red()
-    );
-    println!(
-        "  Duration:    {}",
+        "  Duration: {}",
         style(format!("{:.2?}", result.elapsed)).yellow()
     );
+
+    println!("\n{}", style("Requests:").bold());
+    println!("  Total: {}", style(result.completed).blue());
     println!(
-        "  RPS:         {}",
-        style(format!("{:.1}", result.rps)).cyan()
+        "  Success: {} ({:.1}%)",
+        style(result.success).green(),
+        result.success_rate
+    );
+    println!(
+        "  Failures: {} ({:.1}%)",
+        style(result.failures).red(),
+        result.failure_rate
     );
 
     println!(
@@ -234,18 +249,12 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
             load_rs::Stats::All => style(args.stats).blue(),
         }
     );
-    println!(
-        "  Avg: {:<10} | Min: {:<10} | Max: {:<10}",
-        style(format!("{:.2?}", result.avg)).yellow(),
-        style(format!("{:.2?}", result.min)).yellow(),
-        style(format!("{:.2?}", result.max)).yellow()
-    );
-    println!(
-        "  P50: {:<10} | P90: {:<10} | P95: {:<10}",
-        style(format!("{:.2?}", result.p50)).yellow(),
-        style(format!("{:.2?}", result.p90)).yellow(),
-        style(format!("{:.2?}", result.p95)).yellow()
-    );
+    println!("  Avg: {:.2?}", style(result.avg).yellow());
+    println!("  Min: {:.2?}", style(result.min).yellow());
+    println!("  Max: {:.2?}", style(result.max).yellow());
+    println!("  P50: {:.2?}", style(result.p50).yellow());
+    println!("  P90: {:.2?}", style(result.p90).yellow());
+    println!("  P95: {:.2?}", style(result.p95).yellow());
     Ok(())
 }
 
