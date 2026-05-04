@@ -149,6 +149,19 @@ impl std::fmt::Display for Stats {
     }
 }
 
+/// Represents the data received from a successful HTTP request.
+#[derive(Debug, Clone)]
+pub struct ResponseData {
+    /// HTTP version used.
+    pub version: reqwest::Version,
+    /// HTTP status code.
+    pub status: reqwest::StatusCode,
+    /// HTTP headers.
+    pub headers: HeaderMap,
+    /// Response body bytes.
+    pub body: Bytes,
+}
+
 impl LoadTestResult {
     fn new(capacity: usize) -> Self {
         LoadTestResult {
@@ -641,11 +654,34 @@ impl LoadTestRunner {
         body: Bytes,
         iteration: u64,
         base_file_name: Option<OsString>,
-    ) -> (Result<Response>, Duration, u64, Option<OsString>) {
+    ) -> (Result<ResponseData>, Duration, u64, Option<OsString>) {
         let start = Instant::now();
         let res = self.send_request(method, headers, body).await;
-        let duration = start.elapsed();
-        (res, duration, iteration, base_file_name)
+        match res {
+            Ok(resp) => {
+                let version = resp.version();
+                let status = resp.status();
+                let headers = resp.headers().clone();
+                match resp.bytes().await {
+                    Ok(body) => {
+                        let duration = start.elapsed();
+                        (
+                            Ok(ResponseData {
+                                version,
+                                status,
+                                headers,
+                                body,
+                            }),
+                            duration,
+                            iteration,
+                            base_file_name,
+                        )
+                    }
+                    Err(e) => (Err(e.into()), start.elapsed(), iteration, base_file_name),
+                }
+            }
+            Err(e) => (Err(e), start.elapsed(), iteration, base_file_name),
+        }
     }
 
     async fn create_identity(cert: &Path, key: &Path) -> Result<Identity> {
@@ -697,7 +733,7 @@ impl LoadTestRunner {
 
     async fn process_results<F>(
         &self,
-        mut rx: mpsc::Receiver<(Result<Response>, Duration, u64, Option<OsString>)>,
+        mut rx: mpsc::Receiver<(Result<ResponseData>, Duration, u64, Option<OsString>)>,
         in_progress: F,
         output_dir: Option<&Path>,
     ) -> Result<LoadTestResult>
@@ -956,17 +992,17 @@ impl LoadTestRunner {
 
     async fn write_success_output_file(
         output_file: PathBuf,
-        response: Response,
+        response: ResponseData,
         duration: Duration,
     ) -> Result<()> {
-        let version: String = format!("{:?}", response.version());
-        let status_code = response.status().as_u16();
+        let version: String = format!("{:?}", response.version);
+        let status_code = response.status.as_u16();
         let headers: HashMap<String, String> = response
-            .headers()
+            .headers
             .iter()
             .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
             .collect();
-        let body_bytes = response.bytes().await?;
+        let body_bytes = response.body;
         let body_string: String = match str::from_utf8(&body_bytes) {
             Ok(bytes) => bytes.to_string(),
             Err(_) => BASE64_STANDARD.encode(&body_bytes),
