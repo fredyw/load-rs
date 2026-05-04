@@ -254,6 +254,7 @@ impl LoadTestRunner {
         key: Option<&Path>,
         insecure: bool,
         timeout: Option<u64>,
+        user_agent: Option<&str>,
     ) -> Result<Self> {
         if url.is_empty() {
             bail!("URL cannot be empty");
@@ -276,6 +277,9 @@ impl LoadTestRunner {
             .pool_max_idle_per_host(concurrency as usize);
         if let Some(t) = timeout {
             builder = builder.timeout(Duration::from_secs(t));
+        }
+        if let Some(ua) = user_agent {
+            builder = builder.user_agent(ua);
         }
         if let Some(ca_cert_path) = ca_cert {
             if !ca_cert_path.is_file() {
@@ -1045,6 +1049,7 @@ mod tests {
             None,
             false,
             None,
+            None,
         )
         .await
         .unwrap();
@@ -1056,9 +1061,20 @@ mod tests {
 
     #[tokio::test]
     async fn new_url_is_empty_fails() {
-        let result = LoadTestRunner::new("", 2, 2, Stats::Success, None, None, None, false, None)
-            .await
-            .unwrap_err();
+        let result = LoadTestRunner::new(
+            "",
+            2,
+            2,
+            Stats::Success,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+        )
+        .await
+        .unwrap_err();
 
         assert_eq!(result.to_string(), "URL cannot be empty");
     }
@@ -1074,6 +1090,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             None,
         )
         .await
@@ -1094,6 +1111,7 @@ mod tests {
             None,
             false,
             None,
+            None,
         )
         .await
         .unwrap_err();
@@ -1112,6 +1130,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             None,
         )
         .await
@@ -1135,6 +1154,7 @@ mod tests {
             None,
             false,
             None,
+            None,
         )
         .await
         .unwrap_err();
@@ -1157,6 +1177,7 @@ mod tests {
             Some(Path::new("tests/tls/key.pem")),
             false,
             None,
+            None,
         )
         .await
         .unwrap_err();
@@ -1178,6 +1199,7 @@ mod tests {
             Some(Path::new("tests/tls/client.crt")),
             Some(Path::new("doesnotexist")),
             false,
+            None,
             None,
         )
         .await

@@ -82,6 +82,10 @@ struct Args {
     /// Request timeout in seconds.
     #[arg(short = 't', long)]
     timeout: Option<u64>,
+
+    /// Custom user agent.
+    #[arg(short = 'A', long = "user-agent")]
+    user_agent: Option<String>,
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -304,6 +308,7 @@ async fn main() -> Result<()> {
         args.key.as_deref(),
         args.insecure,
         args.timeout,
+        args.user_agent.as_deref(),
     )
     .await?;
     if args.debug {

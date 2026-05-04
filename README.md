@@ -16,6 +16,8 @@ A simple load testing tool written in Rust.
   - [Order](#order)
   - [TLS](#tls)
   - [Statistics](#statistics)
+  - [Timeout](#timeout)
+  - [User Agent](#user-agent)
   - [Debugging](#debugging)
   - [Examples](#examples)
 - [Building](#building)
@@ -52,6 +54,7 @@ Options:
   -G, --debug                          Performs a single request and dumps the response
   -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: success]
   -t, --timeout <TIMEOUT>              Request timeout in seconds
+  -A, --user-agent <USER_AGENT>        Custom user agent
   -h, --help                           Print help
   -V, --version                        Print version
 ```
@@ -118,6 +121,10 @@ values are supported:
 #### Timeout
 
 The `-t` or `--timeout` option allows you to set a timeout in seconds for each request. By default, requests do not time out.
+
+#### User Agent
+
+The `-A` or `--user-agent` option allows you to set a custom user agent string for each request. By default, requests do not include a custom user agent.
 
 #### Debugging
 
