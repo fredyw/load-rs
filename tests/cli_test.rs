@@ -16,9 +16,9 @@ fn run_get() -> Result<()> {
         "https://mockhttp.org/get",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/get with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }
@@ -36,9 +36,9 @@ fn run_head() -> Result<()> {
         "https://mockhttp.org/get",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/get with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }
@@ -60,9 +60,9 @@ fn run_post() -> Result<()> {
         "https://mockhttp.org/post",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/post with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }
@@ -84,9 +84,9 @@ fn run_put() -> Result<()> {
         "https://mockhttp.org/put",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/put with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }
@@ -108,9 +108,9 @@ fn run_patch() -> Result<()> {
         "https://mockhttp.org/patch",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/patch with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }
@@ -132,9 +132,9 @@ fn run_delete() -> Result<()> {
         "https://mockhttp.org/delete",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/delete with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }
@@ -156,9 +156,9 @@ fn run_data_file() -> Result<()> {
         "https://mockhttp.org/post",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/post with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }
@@ -182,9 +182,9 @@ fn run_data_dir_sequential() -> Result<()> {
         "https://mockhttp.org/post",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/post with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }
@@ -208,9 +208,9 @@ fn run_data_dir_random() -> Result<()> {
         "https://mockhttp.org/post",
     ]);
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Sending 5 requests to https://mockhttp.org/post with 2 concurrency",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Overview:"));
 
     Ok(())
 }

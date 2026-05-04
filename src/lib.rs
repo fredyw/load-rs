@@ -3,7 +3,6 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use bytes::Bytes;
 use futures::{Stream, StreamExt, stream};
-use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::{Certificate, Client, Identity, Response};
 use serde::Deserialize;
@@ -84,8 +83,17 @@ pub struct LoadTestResult {
     /// The 95th percentile response time for successful requests.
     pub p95: Duration,
 
-    /// Requests per second.
+    /// Total wall clock time the test took.
+    pub elapsed: Duration,
+
+    /// Total requests per second.
     pub rps: f64,
+
+    /// Successful requests percentage.
+    pub success_rate: f64,
+
+    /// Failed requests percentage.
+    pub failure_rate: f64,
 }
 
 impl FromStr for HttpMethod {
@@ -129,6 +137,16 @@ impl FromStr for Stats {
     }
 }
 
+impl std::fmt::Display for Stats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Stats::Success => write!(f, "Success"),
+            Stats::Error => write!(f, "Error"),
+            Stats::All => write!(f, "All"),
+        }
+    }
+}
+
 impl LoadTestResult {
     fn new() -> Self {
         LoadTestResult {
@@ -143,7 +161,10 @@ impl LoadTestResult {
             p50: Duration::default(),
             p90: Duration::default(),
             p95: Duration::default(),
+            elapsed: Duration::default(),
             rps: 0.0,
+            success_rate: 0.0,
+            failure_rate: 0.0,
         }
     }
 }
@@ -229,7 +250,7 @@ impl LoadTestRunner {
         }
         if concurrency > requests {
             bail!(
-                "Number of concurrency: {concurrency} must be less than number of requests: {requests}"
+                "Number of concurrency: {concurrency} must be less than or equal to number of requests: {requests}"
             );
         }
         let mut builder = Client::builder()
@@ -347,13 +368,12 @@ impl LoadTestRunner {
         let mut file_names = Self::get_file_names(data_dir).await?;
         // Sort the file names to make it deterministic.
         file_names.sort();
-        let mut random = rand::rng();
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
                 let headers = header.clone().unwrap_or_default();
                 let index = match order {
                     Order::Sequential => i as usize % file_names.len(),
-                    Order::Random => random.random_range(0..file_names.len()),
+                    Order::Random => rand::random_range(0..file_names.len()),
                 };
                 let path = &file_names[index];
                 let base_file_name = path.file_stem().map(|f| f.to_owned());
@@ -415,12 +435,11 @@ impl LoadTestRunner {
             let template = serde_json::from_str(&line)?;
             templates.push(template);
         }
-        let mut random = rand::rng();
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
                 let index = match order {
                     Order::Sequential => i as usize % templates.len(),
-                    Order::Random => random.random_range(0..templates.len()),
+                    Order::Random => rand::random_range(0..templates.len()),
                 };
                 let template = &templates[index];
                 async move {
@@ -514,10 +533,9 @@ impl LoadTestRunner {
         // Sort the file names to make it deterministic.
         file_names.sort();
         let headers = header.unwrap_or_default();
-        let mut random = rand::rng();
         let index = match order {
             Order::Sequential => 0,
-            Order::Random => random.random_range(0..file_names.len()),
+            Order::Random => rand::random_range(0..file_names.len()),
         };
         let body = fs::read(&file_names[index]).await?.into();
         if method == HttpMethod::Get || method == HttpMethod::Head {
@@ -556,10 +574,9 @@ impl LoadTestRunner {
             let template = serde_json::from_str(&line)?;
             templates.push(template);
         }
-        let mut random = rand::rng();
         let index = match order {
             Order::Sequential => 0,
-            Order::Random => random.random_range(0..templates.len()),
+            Order::Random => rand::random_range(0..templates.len()),
         };
         let template = &templates[index];
         let mut headers = HeaderMap::new();
@@ -667,7 +684,7 @@ impl LoadTestRunner {
                 Ok(response) => {
                     result.success += 1;
                     if self.stats == Stats::All || self.stats == Stats::Success {
-                        Self::update_stats(&mut result, duration, test_time)
+                        Self::update_stats(&mut result, duration)
                     }
                     if let Some(output_dir) = output_dir {
                         let output_file = Self::get_output_file(
@@ -683,7 +700,7 @@ impl LoadTestRunner {
                 Err(error) => {
                     result.failures += 1;
                     if self.stats == Stats::All || self.stats == Stats::Error {
-                        Self::update_stats(&mut result, duration, test_time)
+                        Self::update_stats(&mut result, duration)
                     }
                     if let Some(output_dir) = output_dir {
                         let output_file = Self::get_output_file(
@@ -697,6 +714,15 @@ impl LoadTestRunner {
                     }
                 }
             }
+            result.elapsed = test_time.elapsed();
+            let elapsed_secs = result.elapsed.as_secs_f64();
+            if elapsed_secs > 0.0 {
+                result.rps = result.completed as f64 / elapsed_secs;
+            }
+            if result.completed > 0 {
+                result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
+                result.failure_rate = (result.failures as f64 / result.completed as f64) * 100.0;
+            }
             in_progress(&result);
         }
 
@@ -707,27 +733,32 @@ impl LoadTestRunner {
             result.p90 = *p90;
             result.p95 = *p95;
         }
-        result.avg = if self.requests > 0 {
-            result.total_duration / self.requests
-        } else {
-            Duration::new(0, 0)
-        };
-        result.rps = result.success as f64 / test_time.elapsed().as_secs_f64();
+        if !result.durations.is_empty() {
+            result.avg = result.total_duration / result.durations.len() as u32;
+        }
+        result.elapsed = test_time.elapsed();
+        let elapsed_secs = result.elapsed.as_secs_f64();
+        if elapsed_secs > 0.0 {
+            result.rps = result.completed as f64 / elapsed_secs;
+        }
+        if result.completed > 0 {
+            result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
+            result.failure_rate = (result.failures as f64 / result.completed as f64) * 100.0;
+        }
 
         Ok(result)
     }
 
-    fn update_stats(result: &mut LoadTestResult, duration: Duration, test_time: Instant) {
+    fn update_stats(result: &mut LoadTestResult, duration: Duration) {
+        result.durations.push(duration);
         result.total_duration += duration;
-        result.rps = result.success as f64 / test_time.elapsed().as_secs_f64();
-        result.avg = result.total_duration / result.completed;
+        result.avg = result.total_duration / result.durations.len() as u32;
         result.min = if result.min == Duration::default() {
             duration
         } else {
             result.min.min(duration)
         };
         result.max = result.max.max(duration);
-        result.durations.push(duration);
     }
 
     async fn get(&self, headers: HeaderMap, error_for_status: bool) -> Result<Response> {
@@ -985,7 +1016,7 @@ mod tests {
 
         assert_eq!(
             result.to_string(),
-            "Number of concurrency: 3 must be less than number of requests: 2"
+            "Number of concurrency: 3 must be less than or equal to number of requests: 2"
         );
     }
 

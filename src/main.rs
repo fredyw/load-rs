@@ -108,7 +108,7 @@ fn create_progress_bar(len: u32) -> Result<ProgressBar> {
     let pb = ProgressBar::new(len as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({percent}%) {msg}")?
+            .template("[{elapsed_precise:.yellow}] [{bar:40.cyan/blue}] {pos:.blue}/{len:.blue} ({percent:.blue}%)\n{msg}")?
             .progress_chars("#>-"),
     );
     pb.set_position(0);
@@ -116,10 +116,6 @@ fn create_progress_bar(len: u32) -> Result<ProgressBar> {
 }
 
 async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
-    println!(
-        "🚀🚀🚀 Sending {} requests to {} with {} concurrency 🚀🚀🚀",
-        args.requests, args.url, args.concurrency
-    );
     let pb = create_progress_bar(args.requests)?;
     let result = if let Some(data_dir) = &args.data_dir {
         runner
@@ -131,11 +127,18 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?}",
+                        "Status:  Success: {} | Failures: {}\nRate:    RPS: {} | Success: {} | Failure: {}\nLatency: Avg: {} | Filter: {:?}",
                         style(result.success).green(),
                         style(result.failures).red(),
-                        result.rps,
-                        result.avg
+                        style(format!("{:.1}", result.rps)).cyan(),
+                        style(format!("{:.1}%", result.success_rate)).green(),
+                        style(format!("{:.1}%", result.failure_rate)).red(),
+                        style(format!("{:.2?}", result.avg)).yellow(),
+                        match args.stats {
+                            load_rs::Stats::Success => style(args.stats).green(),
+                            load_rs::Stats::Error => style(args.stats).red(),
+                            load_rs::Stats::All => style(args.stats).blue(),
+                        }
                     ));
                     pb.inc(1);
                 },
@@ -150,11 +153,18 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?}",
+                        "Status:  Success: {} | Failures: {}\nRate:    RPS: {} | Success: {} | Failure: {}\nLatency: Avg: {} | Filter: {:?}",
                         style(result.success).green(),
                         style(result.failures).red(),
-                        result.rps,
-                        result.avg
+                        style(format!("{:.1}", result.rps)).cyan(),
+                        style(format!("{:.1}%", result.success_rate)).green(),
+                        style(format!("{:.1}%", result.failure_rate)).red(),
+                        style(format!("{:.2?}", result.avg)).yellow(),
+                        match args.stats {
+                            load_rs::Stats::Success => style(args.stats).green(),
+                            load_rs::Stats::Error => style(args.stats).red(),
+                            load_rs::Stats::All => style(args.stats).blue(),
+                        }
                     ));
                     pb.inc(1);
                 },
@@ -169,23 +179,69 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?} | Min: {:.2?} | Max: {:.2?}",
+                        "Status:  Success: {} | Failures: {}\nRate:    RPS: {} | Success: {} | Failure: {}\nLatency: Avg: {} | Min: {} | Max: {} | Filter: {:?}",
                         style(result.success).green(),
                         style(result.failures).red(),
-                        result.rps,
-                        result.avg,
-                        result.min,
-                        result.max
+                        style(format!("{:.1}", result.rps)).cyan(),
+                        style(format!("{:.1}%", result.success_rate)).green(),
+                        style(format!("{:.1}%", result.failure_rate)).red(),
+                        style(format!("{:.2?}", result.avg)).yellow(),
+                        style(format!("{:.2?}", result.min)).yellow(),
+                        style(format!("{:.2?}", result.max)).yellow(),
+                        match args.stats {
+                            load_rs::Stats::Success => style(args.stats).green(),
+                            load_rs::Stats::Error => style(args.stats).red(),
+                            load_rs::Stats::All => style(args.stats).blue(),
+                        }
                     ));
                     pb.inc(1);
                 },
             )
             .await?
     };
-    pb.finish_with_message(format!(
-        "✅ Done!\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?} | Min: {:.2?} | Max: {:.2?} | P50: {:.2?} | P90: {:.2?} | P95: {:.2?}",
-        style(result.success).green(), style(result.failures).red(), result.rps, result.avg, result.min, result.max, result.p50, result.p90, result.p95
-    ));
+    pb.finish_and_clear();
+
+    println!("{}", style("Overview:").bold());
+    println!("  URL:         {}", style(&args.url).cyan().underlined());
+    println!("  Concurrency: {}", style(args.concurrency).yellow());
+    println!(
+        "  Requests:    {} | {} Success ({}) | {} Failures ({})",
+        style(format!("{} Total", result.completed)).blue(),
+        style(result.success).green(),
+        style(format!("{:.1}%", result.success_rate)).green(),
+        style(result.failures).red(),
+        style(format!("{:.1}%", result.failure_rate)).red()
+    );
+    println!(
+        "  Duration:    {}",
+        style(format!("{:.2?}", result.elapsed)).yellow()
+    );
+    println!(
+        "  RPS:         {}",
+        style(format!("{:.1}", result.rps)).cyan()
+    );
+
+    println!(
+        "\n{} (Filter: {}):",
+        style("Latency").bold(),
+        match args.stats {
+            load_rs::Stats::Success => style(args.stats).green(),
+            load_rs::Stats::Error => style(args.stats).red(),
+            load_rs::Stats::All => style(args.stats).blue(),
+        }
+    );
+    println!(
+        "  Avg: {:<10} | Min: {:<10} | Max: {:<10}",
+        style(format!("{:.2?}", result.avg)).yellow(),
+        style(format!("{:.2?}", result.min)).yellow(),
+        style(format!("{:.2?}", result.max)).yellow()
+    );
+    println!(
+        "  P50: {:<10} | P90: {:<10} | P95: {:<10}",
+        style(format!("{:.2?}", result.p50)).yellow(),
+        style(format!("{:.2?}", result.p90)).yellow(),
+        style(format!("{:.2?}", result.p95)).yellow()
+    );
     Ok(())
 }
 
