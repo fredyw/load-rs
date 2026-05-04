@@ -264,12 +264,30 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
             load_rs::Stats::All => style(args.stats).blue(),
         }
     );
-    println!("  Avg: {}", style(format_duration(result.avg, args.unit)).yellow());
-    println!("  Min: {}", style(format_duration(result.min, args.unit)).yellow());
-    println!("  Max: {}", style(format_duration(result.max, args.unit)).yellow());
-    println!("  P50: {}", style(format_duration(result.p50, args.unit)).yellow());
-    println!("  P90: {}", style(format_duration(result.p90, args.unit)).yellow());
-    println!("  P95: {}", style(format_duration(result.p95, args.unit)).yellow());
+    println!(
+        "  Avg: {}",
+        style(format_duration(result.avg, args.unit)).yellow()
+    );
+    println!(
+        "  Min: {}",
+        style(format_duration(result.min, args.unit)).yellow()
+    );
+    println!(
+        "  Max: {}",
+        style(format_duration(result.max, args.unit)).yellow()
+    );
+    println!(
+        "  P50: {}",
+        style(format_duration(result.p50, args.unit)).yellow()
+    );
+    println!(
+        "  P90: {}",
+        style(format_duration(result.p90, args.unit)).yellow()
+    );
+    println!(
+        "  P95: {}",
+        style(format_duration(result.p95, args.unit)).yellow()
+    );
     Ok(())
 }
 
