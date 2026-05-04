@@ -146,16 +146,16 @@ async fn run_get() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
     .unwrap();
 
     let result = runner
-        .run(HttpMethod::Get, None, None, &None, |_| {})
+        .run(HttpMethod::Get, None, None, None, |_| {})
         .await
         .unwrap();
 
@@ -175,16 +175,16 @@ async fn run_head() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
     .unwrap();
 
     let result = runner
-        .run(HttpMethod::Head, None, None, &None, |_| {})
+        .run(HttpMethod::Head, None, None, None, |_| {})
         .await
         .unwrap();
 
@@ -204,9 +204,9 @@ async fn run_post() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -219,7 +219,7 @@ async fn run_post() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -241,9 +241,9 @@ async fn run_put() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -256,7 +256,7 @@ async fn run_put() {
             HttpMethod::Put,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -278,9 +278,9 @@ async fn run_patch() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -293,7 +293,7 @@ async fn run_patch() {
             HttpMethod::Patch,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -315,9 +315,9 @@ async fn run_delete() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -330,7 +330,7 @@ async fn run_delete() {
             HttpMethod::Delete,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -352,9 +352,9 @@ async fn run_from_dir_sequential() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -366,9 +366,9 @@ async fn run_from_dir_sequential() {
         .run_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Sequential,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -390,9 +390,9 @@ async fn run_from_data_file() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -405,7 +405,7 @@ async fn run_from_data_file() {
             HttpMethod::Post,
             Some(headers),
             Some(DataFile("tests/test_requests/test1.json".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -427,9 +427,9 @@ async fn run_from_dir_random() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -441,9 +441,9 @@ async fn run_from_dir_random() {
         .run_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Random,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -465,9 +465,9 @@ async fn run_from_dir_requests_less_than_files_sequential() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -479,9 +479,9 @@ async fn run_from_dir_requests_less_than_files_sequential() {
         .run_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Sequential,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -503,9 +503,9 @@ async fn run_from_dir_requests_greater_than_files_sequential() {
         7,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -517,9 +517,9 @@ async fn run_from_dir_requests_greater_than_files_sequential() {
         .run_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Sequential,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -541,9 +541,9 @@ async fn run_from_dir_requests_less_than_files_random() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -555,9 +555,9 @@ async fn run_from_dir_requests_less_than_files_random() {
         .run_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Random,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -579,9 +579,9 @@ async fn run_from_dir_requests_greater_than_files_random() {
         7,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -593,9 +593,9 @@ async fn run_from_dir_requests_greater_than_files_random() {
         .run_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Random,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -617,9 +617,9 @@ async fn run_from_manifest_random() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -628,9 +628,9 @@ async fn run_from_manifest_random() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Random,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -652,9 +652,9 @@ async fn run_from_manifest_requests_less_than_files_sequential() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -663,9 +663,9 @@ async fn run_from_manifest_requests_less_than_files_sequential() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Sequential,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -687,9 +687,9 @@ async fn run_from_manifest_requests_greater_than_files_sequential() {
         7,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -698,9 +698,9 @@ async fn run_from_manifest_requests_greater_than_files_sequential() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Sequential,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -722,9 +722,9 @@ async fn run_from_manifest_requests_less_than_files_random() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -733,9 +733,9 @@ async fn run_from_manifest_requests_less_than_files_random() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Random,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -757,9 +757,9 @@ async fn run_from_manifest_requests_greater_than_files_random() {
         7,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -768,9 +768,9 @@ async fn run_from_manifest_requests_greater_than_files_random() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Random,
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -792,9 +792,9 @@ async fn debug_get() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -812,9 +812,9 @@ async fn debug_head() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -832,9 +832,9 @@ async fn debug_post() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -861,9 +861,9 @@ async fn debug_put() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -890,9 +890,9 @@ async fn debug_patch() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -919,9 +919,9 @@ async fn debug_delete() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -948,9 +948,9 @@ async fn debug_from_data_file() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -977,9 +977,9 @@ async fn debug_from_dir_sequential() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -991,7 +991,7 @@ async fn debug_from_dir_sequential() {
         .debug_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Sequential,
         )
         .await
@@ -1007,9 +1007,9 @@ async fn debug_from_dir_random() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1021,7 +1021,7 @@ async fn debug_from_dir_random() {
         .debug_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Random,
         )
         .await
@@ -1037,9 +1037,9 @@ async fn debug_from_manifest_sequential() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1048,7 +1048,7 @@ async fn debug_from_manifest_sequential() {
     let response = runner
         .debug_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Sequential,
         )
         .await
@@ -1064,9 +1064,9 @@ async fn debug_from_manifest_random() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1075,7 +1075,7 @@ async fn debug_from_manifest_random() {
     let response = runner
         .debug_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Random,
         )
         .await
@@ -1097,9 +1097,9 @@ async fn run_success_save_responses() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1112,7 +1112,7 @@ async fn run_success_save_responses() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &Some(output_dir),
+            Some(&output_dir),
             |_| {},
         )
         .await
@@ -1137,9 +1137,9 @@ async fn run_failure_save_responses() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1152,7 +1152,7 @@ async fn run_failure_save_responses() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &Some(output_dir),
+            Some(&output_dir),
             |_| {},
         )
         .await
@@ -1177,9 +1177,9 @@ async fn run_from_dir_success_save_responses() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1191,9 +1191,9 @@ async fn run_from_dir_success_save_responses() {
         .run_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Sequential,
-            &Some(output_dir),
+            Some(&output_dir),
             |_| {},
         )
         .await
@@ -1218,9 +1218,9 @@ async fn run_from_dir_failure_save_responses() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1232,9 +1232,9 @@ async fn run_from_dir_failure_save_responses() {
         .run_from_dir(
             HttpMethod::Post,
             Some(headers),
-            &"tests/test_requests".into(),
+            Path::new("tests/test_requests"),
             Order::Sequential,
-            &Some(output_dir),
+            Some(&output_dir),
             |_| {},
         )
         .await
@@ -1259,9 +1259,9 @@ async fn run_from_manifest_success_save_responses() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1270,9 +1270,9 @@ async fn run_from_manifest_success_save_responses() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Sequential,
-            &Some(output_dir),
+            Some(&output_dir),
             |_| {},
         )
         .await
@@ -1297,9 +1297,9 @@ async fn run_from_manifest_failure_save_responses() {
         3,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1308,9 +1308,9 @@ async fn run_from_manifest_failure_save_responses() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            &"tests/test_manifests/manifest1.jsonl".into(),
+            Path::new("tests/test_manifests/manifest1.jsonl"),
             Order::Sequential,
-            &Some(output_dir),
+            Some(&output_dir),
             |_| {},
         )
         .await
@@ -1331,16 +1331,16 @@ async fn run_mtls_http1_valid_certs() {
         5,
         2,
         Stats::Success,
-        &Some("tests/tls/ca.crt".into()),
-        &Some("tests/tls/client.crt".into()),
-        &Some("tests/tls/client.key".into()),
+        Some(Path::new("tests/tls/ca.crt")),
+        Some(Path::new("tests/tls/client.crt")),
+        Some(Path::new("tests/tls/client.key")),
         false,
     )
     .await
     .unwrap();
 
     let result = runner
-        .run(HttpMethod::Get, None, None, &None, |_| {})
+        .run(HttpMethod::Get, None, None, None, |_| {})
         .await
         .unwrap();
 
@@ -1362,16 +1362,16 @@ async fn run_mtls_http2_valid_certs() {
         5,
         2,
         Stats::Success,
-        &Some("tests/tls/ca.crt".into()),
-        &Some("tests/tls/client.crt".into()),
-        &Some("tests/tls/client.key".into()),
+        Some(Path::new("tests/tls/ca.crt")),
+        Some(Path::new("tests/tls/client.crt")),
+        Some(Path::new("tests/tls/client.key")),
         false,
     )
     .await
     .unwrap();
 
     let result = runner
-        .run(HttpMethod::Get, None, None, &None, |_| {})
+        .run(HttpMethod::Get, None, None, None, |_| {})
         .await
         .unwrap();
 
@@ -1393,16 +1393,16 @@ async fn run_mtls_invalid_certs() {
         5,
         2,
         Stats::Success,
-        &Some("tests/tls/untrusted-ca.crt".into()),
-        &Some("tests/tls/untrusted-client.crt".into()),
-        &Some("tests/tls/untrusted-client.key".into()),
+        Some(Path::new("tests/tls/untrusted-ca.crt")),
+        Some(Path::new("tests/tls/untrusted-client.crt")),
+        Some(Path::new("tests/tls/untrusted-client.key")),
         false,
     )
     .await
     .unwrap();
 
     let result = runner
-        .run(HttpMethod::Get, None, None, &None, |_| {})
+        .run(HttpMethod::Get, None, None, None, |_| {})
         .await
         .unwrap();
 
@@ -1419,9 +1419,9 @@ async fn run_success_stats() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1434,7 +1434,7 @@ async fn run_success_stats() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -1454,9 +1454,9 @@ async fn run_success_stats() {
         5,
         2,
         Stats::Success,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1469,7 +1469,7 @@ async fn run_success_stats() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("hello".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -1492,9 +1492,9 @@ async fn run_failure_stats() {
         5,
         2,
         Stats::Error,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1507,7 +1507,7 @@ async fn run_failure_stats() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -1527,9 +1527,9 @@ async fn run_failure_stats() {
         5,
         2,
         Stats::Error,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1542,7 +1542,7 @@ async fn run_failure_stats() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("hello".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -1565,9 +1565,9 @@ async fn run_all_stats() {
         5,
         2,
         Stats::All,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1580,7 +1580,7 @@ async fn run_all_stats() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            &None,
+            None,
             |_| {},
         )
         .await
@@ -1600,9 +1600,9 @@ async fn run_all_stats() {
         5,
         2,
         Stats::All,
-        &None,
-        &None,
-        &None,
+        None,
+        None,
+        None,
         false,
     )
     .await
@@ -1615,7 +1615,7 @@ async fn run_all_stats() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("hello".into())),
-            &None,
+            None,
             |_| {},
         )
         .await

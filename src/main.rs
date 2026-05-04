@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use bytes::Bytes;
 use clap::Parser;
 use console::style;
@@ -24,7 +24,7 @@ struct Args {
     concurrency: u32,
 
     /// HTTP method to use for the requests.
-    #[arg(short = 'X', long, value_parser = parse_http_method, default_value = "get")]
+    #[arg(short = 'X', long, default_value = "get")]
     method: HttpMethod,
 
     /// Custom HTTP header(s) in "key: value" format. Can be repeated.
@@ -64,7 +64,7 @@ struct Args {
     insecure: bool,
 
     /// Order to process files from --data-dir or --manifest-file.
-    #[arg(short = 'O', long, value_parser = parse_order, default_value = "sequential", requires = "data_dir")]
+    #[arg(short = 'O', long, default_value = "sequential", requires = "data_dir")]
     order: Order,
 
     /// Directory to save responses to.
@@ -76,37 +76,8 @@ struct Args {
     debug: bool,
 
     /// Specifies which requests to include in the statistics.
-    #[arg(short = 's', long, value_parser = parse_stats, default_value = "success")]
+    #[arg(short = 's', long, default_value = "success")]
     stats: Stats,
-}
-
-fn parse_http_method(s: &str) -> Result<HttpMethod> {
-    match s.to_ascii_lowercase().as_str() {
-        "get" => Ok(HttpMethod::Get),
-        "post" => Ok(HttpMethod::Post),
-        "put" => Ok(HttpMethod::Put),
-        "delete" => Ok(HttpMethod::Delete),
-        "patch" => Ok(HttpMethod::Patch),
-        "head" => Ok(HttpMethod::Head),
-        _ => bail!("'{s}' is not a valid HTTP method"),
-    }
-}
-
-fn parse_order(s: &str) -> Result<Order> {
-    match s.to_ascii_lowercase().as_str() {
-        "sequential" => Ok(Order::Sequential),
-        "random" => Ok(Order::Random),
-        _ => bail!("'{s}' is not a valid read order"),
-    }
-}
-
-fn parse_stats(s: &str) -> Result<Stats> {
-    match s.to_ascii_lowercase().as_str() {
-        "success" => Ok(Stats::Success),
-        "error" => Ok(Stats::Error),
-        "all" => Ok(Stats::All),
-        _ => bail!("'{s}' is not a valid stats"),
-    }
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -125,7 +96,7 @@ fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
 
 fn to_body(args: &Args) -> Body {
     if let Some(data) = &args.data {
-        Body::Data(data.to_owned().into())
+        Body::Data(Bytes::copy_from_slice(data.as_bytes()))
     } else if let Some(data_file) = &args.data_file {
         Body::DataFile(data_file.to_owned())
     } else {
@@ -157,7 +128,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 Some(to_header_map(&args.header)?),
                 data_dir,
                 args.order,
-                &args.output_dir,
+                args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?}",
@@ -176,7 +147,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.method,
                 manifest_file,
                 args.order,
-                &args.output_dir,
+                args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?}",
@@ -195,7 +166,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.method,
                 Some(to_header_map(&args.header)?),
                 Some(to_body(args)),
-                &args.output_dir,
+                args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
                         "\nSuccess: {} | Failures: {} | RPS: {:.2?} | Avg: {:.2?} | Min: {:.2?} | Max: {:.2?}",
@@ -259,9 +230,9 @@ async fn main() -> Result<()> {
         args.requests,
         args.concurrency,
         args.stats,
-        &args.ca_cert,
-        &args.cert,
-        &args.key,
+        args.ca_cert.as_deref(),
+        args.cert.as_deref(),
+        args.key.as_deref(),
         args.insecure,
     )
     .await?;

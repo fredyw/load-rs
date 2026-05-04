@@ -88,6 +88,47 @@ pub struct LoadTestResult {
     pub rps: f64,
 }
 
+impl FromStr for HttpMethod {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "get" => Ok(HttpMethod::Get),
+            "post" => Ok(HttpMethod::Post),
+            "put" => Ok(HttpMethod::Put),
+            "delete" => Ok(HttpMethod::Delete),
+            "patch" => Ok(HttpMethod::Patch),
+            "head" => Ok(HttpMethod::Head),
+            _ => bail!("'{s}' is not a valid HTTP method"),
+        }
+    }
+}
+
+impl FromStr for Order {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "sequential" => Ok(Order::Sequential),
+            "random" => Ok(Order::Random),
+            _ => bail!("'{s}' is not a valid read order"),
+        }
+    }
+}
+
+impl FromStr for Stats {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "success" => Ok(Stats::Success),
+            "error" => Ok(Stats::Error),
+            "all" => Ok(Stats::All),
+            _ => bail!("'{s}' is not a valid stats"),
+        }
+    }
+}
+
 impl LoadTestResult {
     fn new() -> Self {
         LoadTestResult {
@@ -172,9 +213,9 @@ impl LoadTestRunner {
         requests: u32,
         concurrency: u32,
         stats: Stats,
-        ca_cert: &Option<PathBuf>,
-        cert: &Option<PathBuf>,
-        key: &Option<PathBuf>,
+        ca_cert: Option<&Path>,
+        cert: Option<&Path>,
+        key: Option<&Path>,
         insecure: bool,
     ) -> Result<Self> {
         if url.is_empty() {
@@ -198,7 +239,7 @@ impl LoadTestRunner {
             if !ca_cert_path.is_file() {
                 bail!(
                     "CA certificate '{}' does not exist or is not a file",
-                    ca_cert_path.to_str().unwrap()
+                    ca_cert_path.display()
                 );
             }
             let bytes = fs::read(ca_cert_path).await?;
@@ -243,7 +284,7 @@ impl LoadTestRunner {
         method: HttpMethod,
         header: Option<HeaderMap>,
         body: Option<Body>,
-        output_dir: &Option<PathBuf>,
+        output_dir: Option<&Path>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -292,9 +333,9 @@ impl LoadTestRunner {
         &self,
         method: HttpMethod,
         header: Option<HeaderMap>,
-        data_dir: &PathBuf,
+        data_dir: &Path,
         order: Order,
-        output_dir: &Option<PathBuf>,
+        output_dir: Option<&Path>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -358,9 +399,9 @@ impl LoadTestRunner {
     pub async fn run_from_manifest<T>(
         &self,
         method: HttpMethod,
-        manifest_file: &PathBuf,
+        manifest_file: &Path,
         order: Order,
-        output_dir: &Option<PathBuf>,
+        output_dir: Option<&Path>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -463,7 +504,7 @@ impl LoadTestRunner {
         &self,
         method: HttpMethod,
         header: Option<HeaderMap>,
-        data_dir: &PathBuf,
+        data_dir: &Path,
         order: Order,
     ) -> Result<Response> {
         if method == HttpMethod::Get || method == HttpMethod::Head {
@@ -504,7 +545,7 @@ impl LoadTestRunner {
     pub async fn debug_from_manifest(
         &self,
         method: HttpMethod,
-        manifest_file: &PathBuf,
+        manifest_file: &Path,
         order: Order,
     ) -> Result<Response> {
         let file = File::open(manifest_file).await?;
@@ -551,17 +592,17 @@ impl LoadTestRunner {
         }
     }
 
-    async fn create_identity(cert: &PathBuf, key: &PathBuf) -> Result<Identity> {
+    async fn create_identity(cert: &Path, key: &Path) -> Result<Identity> {
         if !cert.is_file() {
             bail!(
                 "Certificate '{}' does not exist or is not a file",
-                cert.to_str().unwrap()
+                cert.display()
             );
         }
         if !key.is_file() {
             bail!(
                 "Private key '{}' does not exist or is not a file",
-                key.to_str().unwrap()
+                key.display()
             );
         }
         let cert_bytes = tokio::fs::read(cert).await?;
@@ -578,7 +619,7 @@ impl LoadTestRunner {
                 if !data_file.is_file() {
                     bail!(
                         "Data file '{}' does not exist or is not a file",
-                        data_file.to_str().unwrap()
+                        data_file.display()
                     );
                 }
                 let data = fs::read(data_file).await?;
@@ -587,7 +628,7 @@ impl LoadTestRunner {
         }
     }
 
-    async fn get_file_names(dir: &PathBuf) -> Result<Vec<PathBuf>> {
+    async fn get_file_names(dir: &Path) -> Result<Vec<PathBuf>> {
         let mut file_names: Vec<PathBuf> = Vec::new();
         let mut read_dir = fs::read_dir(dir).await?;
         while let Some(entry) = read_dir.next_entry().await? {
@@ -602,7 +643,7 @@ impl LoadTestRunner {
         &self,
         mut stream: S,
         in_progress: F,
-        output_dir: &Option<PathBuf>,
+        output_dir: Option<&Path>,
     ) -> Result<LoadTestResult>
     where
         S: Stream<
@@ -633,7 +674,7 @@ impl LoadTestRunner {
                             self.requests,
                             output_dir,
                             iteration + 1,
-                            &base_file_name,
+                            base_file_name.as_deref(),
                             true,
                         );
                         Self::write_success_output_file(&output_file, response, duration).await?;
@@ -649,7 +690,7 @@ impl LoadTestRunner {
                             self.requests,
                             output_dir,
                             iteration + 1,
-                            &base_file_name,
+                            base_file_name.as_deref(),
                             false,
                         );
                         Self::write_failure_output_file(&output_file, &error).await?;
@@ -802,24 +843,24 @@ impl LoadTestRunner {
         num_requests: u32,
         output_dir: &Path,
         iteration: u64,
-        base_file_name: &Option<OsString>,
+        base_file_name: Option<&std::ffi::OsStr>,
         success: bool,
     ) -> PathBuf {
         if let Some(base_file_name) = base_file_name {
-            output_dir.join(PathBuf::from(format!(
+            output_dir.join(format!(
                 "{}-{:0width$}-{}.json",
                 if success { "success" } else { "failure" },
                 iteration,
                 base_file_name.to_string_lossy(),
                 width = num_requests.to_string().len()
-            )))
+            ))
         } else {
-            output_dir.join(PathBuf::from(format!(
+            output_dir.join(format!(
                 "{}-{:0width$}.json",
                 if success { "success" } else { "failure" },
                 iteration,
                 width = num_requests.to_string().len()
-            )))
+            ))
         }
     }
 
@@ -869,9 +910,9 @@ mod tests {
             10,
             2,
             Stats::Success,
-            &None,
-            &None,
-            &None,
+            None,
+            None,
+            None,
             false,
         )
         .await
@@ -884,7 +925,7 @@ mod tests {
 
     #[tokio::test]
     async fn new_url_is_empty_fails() {
-        let result = LoadTestRunner::new("", 2, 2, Stats::Success, &None, &None, &None, false)
+        let result = LoadTestRunner::new("", 2, 2, Stats::Success, None, None, None, false)
             .await
             .unwrap_err();
 
@@ -898,9 +939,9 @@ mod tests {
             0,
             2,
             Stats::Success,
-            &None,
-            &None,
-            &None,
+            None,
+            None,
+            None,
             false,
         )
         .await
@@ -916,9 +957,9 @@ mod tests {
             2,
             0,
             Stats::Success,
-            &None,
-            &None,
-            &None,
+            None,
+            None,
+            None,
             false,
         )
         .await
@@ -934,9 +975,9 @@ mod tests {
             2,
             3,
             Stats::Success,
-            &None,
-            &None,
-            &None,
+            None,
+            None,
+            None,
             false,
         )
         .await
@@ -955,9 +996,9 @@ mod tests {
             10,
             2,
             Stats::Success,
-            &Some("doesnotexist".into()),
-            &None,
-            &None,
+            Some(Path::new("doesnotexist")),
+            None,
+            None,
             false,
         )
         .await
@@ -976,9 +1017,9 @@ mod tests {
             10,
             2,
             Stats::Success,
-            &None,
-            &Some("doesnotexist".into()),
-            &Some("tests/tls/key.pem".into()),
+            None,
+            Some(Path::new("doesnotexist")),
+            Some(Path::new("tests/tls/key.pem")),
             false,
         )
         .await
@@ -997,9 +1038,9 @@ mod tests {
             10,
             2,
             Stats::Success,
-            &None,
-            &Some("tests/tls/client.crt".into()),
-            &Some("doesnotexist".into()),
+            None,
+            Some(Path::new("tests/tls/client.crt")),
+            Some(Path::new("doesnotexist")),
             false,
         )
         .await
@@ -1013,7 +1054,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_file_names_succeeds() {
-        let mut file_names = LoadTestRunner::get_file_names(&"tests/test_requests".into())
+        let mut file_names = LoadTestRunner::get_file_names(Path::new("tests/test_requests"))
             .await
             .unwrap();
         file_names.sort();
@@ -1022,10 +1063,10 @@ mod tests {
             file_names,
             vec![
                 PathBuf::from("tests/test_requests/test1.json"),
-                "tests/test_requests/test2.json".into(),
-                "tests/test_requests/test3.json".into(),
-                "tests/test_requests/test4.json".into(),
-                "tests/test_requests/test5.json".into(),
+                PathBuf::from("tests/test_requests/test2.json"),
+                PathBuf::from("tests/test_requests/test3.json"),
+                PathBuf::from("tests/test_requests/test4.json"),
+                PathBuf::from("tests/test_requests/test5.json"),
             ]
         );
     }
@@ -1041,17 +1082,18 @@ mod tests {
 
     #[tokio::test]
     async fn get_data_file_succeeds() {
-        let bytes =
-            LoadTestRunner::get_data(Body::DataFile("tests/test_requests/test1.json".into()))
-                .await
-                .unwrap();
+        let bytes = LoadTestRunner::get_data(Body::DataFile(PathBuf::from(
+            "tests/test_requests/test1.json",
+        )))
+        .await
+        .unwrap();
 
         assert_eq!(bytes, "{\n  \"message\": \"hello1\"\n}\n".as_bytes());
     }
 
     #[tokio::test]
     async fn get_data_file_does_not_exist_fails() {
-        let err = LoadTestRunner::get_data(Body::DataFile("doesnotexist".into()))
+        let err = LoadTestRunner::get_data(Body::DataFile(PathBuf::from("doesnotexist")))
             .await
             .unwrap_err();
 
@@ -1063,7 +1105,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_invalid_data_file_fails() {
-        let err = LoadTestRunner::get_data(Body::DataFile("tests/test_requests".into()))
+        let err = LoadTestRunner::get_data(Body::DataFile(PathBuf::from("tests/test_requests")))
             .await
             .unwrap_err();
 
@@ -1087,30 +1129,28 @@ mod tests {
 
     #[test]
     fn get_output_file_succeeds() {
-        let output_file =
-            LoadTestRunner::get_output_file(100, PathBuf::from("/tmp").as_path(), 3, &None, true);
-        assert_eq!(output_file.as_os_str(), "/tmp/success-003.json");
+        let output_file = LoadTestRunner::get_output_file(100, Path::new("/tmp"), 3, None, true);
+        assert_eq!(output_file, Path::new("/tmp/success-003.json"));
 
-        let output_file =
-            LoadTestRunner::get_output_file(100, PathBuf::from("/tmp").as_path(), 3, &None, false);
-        assert_eq!(output_file.as_os_str(), "/tmp/failure-003.json");
+        let output_file = LoadTestRunner::get_output_file(100, Path::new("/tmp"), 3, None, false);
+        assert_eq!(output_file, Path::new("/tmp/failure-003.json"));
 
         let output_file = LoadTestRunner::get_output_file(
             100,
-            PathBuf::from("/tmp").as_path(),
+            Path::new("/tmp"),
             3,
-            &Some(PathBuf::from("request").as_os_str().to_owned()),
+            Some(std::ffi::OsStr::new("request")),
             true,
         );
-        assert_eq!(output_file.as_os_str(), "/tmp/success-003-request.json");
+        assert_eq!(output_file, Path::new("/tmp/success-003-request.json"));
 
         let output_file = LoadTestRunner::get_output_file(
             100,
-            PathBuf::from("/tmp").as_path(),
+            Path::new("/tmp"),
             3,
-            &Some(PathBuf::from("request").as_os_str().to_owned()),
+            Some(std::ffi::OsStr::new("request")),
             false,
         );
-        assert_eq!(output_file.as_os_str(), "/tmp/failure-003-request.json");
+        assert_eq!(output_file, Path::new("/tmp/failure-003-request.json"));
     }
 }
