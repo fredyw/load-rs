@@ -10,7 +10,8 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::str::{self, FromStr};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::fs;
 use tokio::fs::File;
@@ -311,16 +312,15 @@ impl LoadTestRunner {
     where
         T: Fn(&LoadTestResult),
     {
-        let body = Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?;
+        let body = Arc::new(Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?);
+        let headers = Arc::new(header.unwrap_or_default());
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
-                let headers = header.clone().unwrap_or_default();
-                let body = body.clone();
+                let headers = Arc::clone(&headers);
+                let body = Arc::clone(&body);
                 async move {
-                    let start_time = Instant::now();
-                    let response = self.send_request(method, headers, body).await;
-                    let duration = start_time.elapsed();
-                    (response, duration, i, None)
+                    self.timed_request(method, (*headers).clone(), (*body).clone(), i, None)
+                        .await
                 }
             })
             .buffer_unordered(self.concurrency as usize);
@@ -368,27 +368,36 @@ impl LoadTestRunner {
         let mut file_names = Self::get_file_names(data_dir).await?;
         // Sort the file names to make it deterministic.
         file_names.sort();
+        let mut bodies = Vec::new();
+        for path in &file_names {
+            let body = fs::read(path).await?;
+            bodies.push((
+                Arc::new(Bytes::from(body)),
+                path.file_stem().map(|f| f.to_owned()),
+            ));
+        }
+        let bodies = Arc::new(bodies);
+        let headers = Arc::new(header.unwrap_or_default());
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
-                let headers = header.clone().unwrap_or_default();
+                let headers = Arc::clone(&headers);
+                let bodies = Arc::clone(&bodies);
                 let index = match order {
-                    Order::Sequential => i as usize % file_names.len(),
-                    Order::Random => rand::random_range(0..file_names.len()),
+                    Order::Sequential => i as usize % bodies.len(),
+                    Order::Random => rand::random_range(0..bodies.len()),
                 };
-                let path = &file_names[index];
-                let base_file_name = path.file_stem().map(|f| f.to_owned());
+                let (body, base_file_name) = &bodies[index];
+                let body = Arc::clone(body);
+                let base_file_name = base_file_name.clone();
                 async move {
-                    let body = match fs::read(path).await {
-                        Ok(data) => data.into(),
-                        Err(e) => return (Err(e.into()), Duration::default(), i, base_file_name),
-                    };
-                    let start_time = Instant::now();
-                    if method == HttpMethod::Get || method == HttpMethod::Head {
-                        panic!("Unexpected HTTP method '{method:?}'");
-                    }
-                    let response = self.send_request(method, headers, body).await;
-                    let duration = start_time.elapsed();
-                    (response, duration, i, base_file_name)
+                    self.timed_request(
+                        method,
+                        (*headers).clone(),
+                        (*body).clone(),
+                        i,
+                        base_file_name,
+                    )
+                    .await
                 }
             })
             .buffer_unordered(self.concurrency as usize);
@@ -430,52 +439,36 @@ impl LoadTestRunner {
         let file = File::open(manifest_file).await?;
         let reader = BufReader::new(file);
         let mut lines = reader.lines();
-        let mut templates: Vec<RequestTemplate> = Vec::new();
+        let mut templates = Vec::new();
         while let Some(line) = lines.next_line().await? {
-            let template = serde_json::from_str(&line)?;
-            templates.push(template);
+            let template: RequestTemplate = serde_json::from_str(&line)?;
+            let mut headers = HeaderMap::new();
+            for (name, value) in &template.headers {
+                headers.insert(HeaderName::from_str(name)?, HeaderValue::from_str(value)?);
+            }
+            let body = if let Some(body) = &template.body {
+                Bytes::from(body.clone())
+            } else if let Some(base64_body) = &template.binary_body {
+                Bytes::from(BASE64_STANDARD.decode(base64_body)?)
+            } else {
+                Bytes::new()
+            };
+            templates.push((Arc::new(headers), Arc::new(body)));
         }
+        let templates = Arc::new(templates);
         let stream = stream::iter(0..self.requests as u64)
             .map(|i| {
+                let templates = Arc::clone(&templates);
                 let index = match order {
                     Order::Sequential => i as usize % templates.len(),
                     Order::Random => rand::random_range(0..templates.len()),
                 };
-                let template = &templates[index];
+                let (headers, body) = &templates[index];
+                let headers = Arc::clone(headers);
+                let body = Arc::clone(body);
                 async move {
-                    let mut headers = HeaderMap::new();
-                    for (name, value) in &template.headers {
-                        let header_name = match HeaderName::from_str(name) {
-                            Ok(name) => name,
-                            Err(e) => {
-                                return (Err(e.into()), Duration::default(), i, None);
-                            }
-                        };
-                        let header_value = match HeaderValue::from_str(value) {
-                            Ok(name) => name,
-                            Err(e) => {
-                                return (Err(e.into()), Duration::default(), i, None);
-                            }
-                        };
-                        headers.insert(header_name, header_value);
-                    }
-                    let body = if let Some(body) = &template.body {
-                        Bytes::from(body.clone())
-                    } else if let Some(base64_body) = &template.binary_body {
-                        let bytes = match BASE64_STANDARD.decode(base64_body) {
-                            Ok(body) => body,
-                            Err(e) => {
-                                return (Err(e.into()), Duration::default(), i, None);
-                            }
-                        };
-                        Bytes::from(bytes)
-                    } else {
-                        Bytes::new()
-                    };
-                    let start_time = Instant::now();
-                    let response = self.send_request(method, headers, body).await;
-                    let duration = start_time.elapsed();
-                    (response, duration, i, None)
+                    self.timed_request(method, (*headers).clone(), (*body).clone(), i, None)
+                        .await
                 }
             })
             .buffer_unordered(self.concurrency as usize);
@@ -607,6 +600,20 @@ impl LoadTestRunner {
             HttpMethod::Delete => self.delete(headers, body, true).await,
             HttpMethod::Patch => self.patch(headers, body, true).await,
         }
+    }
+
+    async fn timed_request(
+        &self,
+        method: HttpMethod,
+        headers: HeaderMap,
+        body: Bytes,
+        iteration: u64,
+        base_file_name: Option<OsString>,
+    ) -> (Result<Response>, Duration, u64, Option<OsString>) {
+        let start = Instant::now();
+        let res = self.send_request(method, headers, body).await;
+        let duration = start.elapsed();
+        (res, duration, iteration, base_file_name)
     }
 
     async fn create_identity(cert: &Path, key: &Path) -> Result<Identity> {
