@@ -11,11 +11,12 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::sync::{Semaphore, mpsc};
+use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 
 /// A load test runner responsible for configuring and executing a load test.
@@ -360,25 +361,37 @@ impl LoadTestRunner {
         let headers = Arc::new(header.unwrap_or_default());
         let save_response = output_dir.is_some();
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
-        let semaphore = Arc::new(Semaphore::new(self.concurrency as usize));
         let runner = Arc::new(self.clone());
-        tokio::spawn(async move {
-            for i in 0..runner.requests as u64 {
-                let permit = semaphore.clone().acquire_owned().await.unwrap();
-                let tx = tx.clone();
-                let headers = Arc::clone(&headers);
-                let body = Arc::clone(&body);
-                let runner = Arc::clone(&runner);
-
-                tokio::spawn(async move {
-                    let _permit = permit;
+        let counter = Arc::new(AtomicU64::new(0));
+        for _ in 0..self.concurrency {
+            let tx = tx.clone();
+            let headers = Arc::clone(&headers);
+            let body = Arc::clone(&body);
+            let runner = Arc::clone(&runner);
+            let counter = Arc::clone(&counter);
+            tokio::spawn(async move {
+                loop {
+                    let i = counter.fetch_add(1, Ordering::Relaxed);
+                    if i >= runner.requests as u64 {
+                        break;
+                    }
                     let result = runner
-                        .timed_request(method, (*headers).clone(), (*body).clone(), i, None, save_response)
+                        .timed_request(
+                            method,
+                            (*headers).clone(),
+                            (*body).clone(),
+                            i,
+                            None,
+                            save_response,
+                        )
                         .await;
-                    let _ = tx.send(result).await;
-                });
-            }
-        });
+                    if tx.send(result).await.is_err() {
+                        break;
+                    }
+                }
+            });
+        }
+        drop(tx);
         self.process_results(rx, in_progress, output_dir).await
     }
 
@@ -435,17 +448,20 @@ impl LoadTestRunner {
         let bodies = Arc::new(bodies);
         let headers = Arc::new(header.unwrap_or_default());
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
-        let semaphore = Arc::new(Semaphore::new(self.concurrency as usize));
         let runner = Arc::new(self.clone());
-        tokio::spawn(async move {
-            for i in 0..runner.requests as u64 {
-                let permit = semaphore.clone().acquire_owned().await.unwrap();
-                let tx = tx.clone();
-                let headers = Arc::clone(&headers);
-                let bodies = Arc::clone(&bodies);
-                let runner = Arc::clone(&runner);
-                tokio::spawn(async move {
-                    let _permit = permit;
+        let counter = Arc::new(AtomicU64::new(0));
+        for _ in 0..self.concurrency {
+            let tx = tx.clone();
+            let headers = Arc::clone(&headers);
+            let bodies = Arc::clone(&bodies);
+            let runner = Arc::clone(&runner);
+            let counter = Arc::clone(&counter);
+            tokio::spawn(async move {
+                loop {
+                    let i = counter.fetch_add(1, Ordering::Relaxed);
+                    if i >= runner.requests as u64 {
+                        break;
+                    }
                     let index = match order {
                         Order::Sequential => i as usize % bodies.len(),
                         Order::Random => rand::random_range(0..bodies.len()),
@@ -463,10 +479,13 @@ impl LoadTestRunner {
                             save_response,
                         )
                         .await;
-                    let _ = tx.send(result).await;
-                });
-            }
-        });
+                    if tx.send(result).await.is_err() {
+                        break;
+                    }
+                }
+            });
+        }
+        drop(tx);
         self.process_results(rx, in_progress, output_dir).await
     }
 
@@ -524,17 +543,19 @@ impl LoadTestRunner {
         let save_response = output_dir.is_some();
         let templates = Arc::new(templates);
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
-        let semaphore = Arc::new(Semaphore::new(self.concurrency as usize));
         let runner = Arc::new(self.clone());
-        tokio::spawn(async move {
-            for i in 0..runner.requests as u64 {
-                let permit = semaphore.clone().acquire_owned().await.unwrap();
-                let tx = tx.clone();
-                let templates = Arc::clone(&templates);
-                let runner = Arc::clone(&runner);
-
-                tokio::spawn(async move {
-                    let _permit = permit;
+        let counter = Arc::new(AtomicU64::new(0));
+        for _ in 0..self.concurrency {
+            let tx = tx.clone();
+            let templates = Arc::clone(&templates);
+            let runner = Arc::clone(&runner);
+            let counter = Arc::clone(&counter);
+            tokio::spawn(async move {
+                loop {
+                    let i = counter.fetch_add(1, Ordering::Relaxed);
+                    if i >= runner.requests as u64 {
+                        break;
+                    }
                     let index = match order {
                         Order::Sequential => i as usize % templates.len(),
                         Order::Random => rand::random_range(0..templates.len()),
@@ -543,12 +564,22 @@ impl LoadTestRunner {
                     let headers = Arc::clone(headers);
                     let body = Arc::clone(body);
                     let result = runner
-                        .timed_request(method, (*headers).clone(), (*body).clone(), i, None, save_response)
+                        .timed_request(
+                            method,
+                            (*headers).clone(),
+                            (*body).clone(),
+                            i,
+                            None,
+                            save_response,
+                        )
                         .await;
-                    let _ = tx.send(result).await;
-                });
-            }
-        });
+                    if tx.send(result).await.is_err() {
+                        break;
+                    }
+                }
+            });
+        }
+        drop(tx);
         self.process_results(rx, in_progress, output_dir).await
     }
 
