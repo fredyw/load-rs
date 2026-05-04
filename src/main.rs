@@ -3,7 +3,7 @@ use bytes::Bytes;
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use load_rs::{Body, HttpMethod, LoadTestRunner, Order, Stats};
+use load_rs::{Body, HttpMethod, LoadTestRunner, Order, Stats, Unit};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -86,6 +86,10 @@ struct Args {
     /// Custom user agent.
     #[arg(short = 'A', long = "user-agent")]
     user_agent: Option<String>,
+
+    /// Unit of measurement (seconds or milliseconds).
+    #[arg(short = 'u', long, default_value = "milliseconds")]
+    unit: Unit,
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -112,6 +116,13 @@ fn to_body(args: &Args) -> Body {
     }
 }
 
+fn format_duration(duration: std::time::Duration, unit: Unit) -> String {
+    match unit {
+        Unit::Seconds => format!("{:.2}s", duration.as_secs_f64()),
+        Unit::Milliseconds => format!("{:.2}ms", duration.as_secs_f64() * 1000.0),
+    }
+}
+
 fn create_progress_bar(len: u32) -> Result<ProgressBar> {
     let pb = ProgressBar::new(len as u64);
     pb.set_style(
@@ -135,11 +146,11 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {:.2?}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {:.2?}\n  Max: {:.2?}",
+                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {}\n  Max: {}",
                         style(&args.url).cyan().underlined(),
                         style(args.concurrency).yellow(),
                         style(format!("{:.1}", result.rps)).cyan(),
-                        style(result.elapsed).yellow(),
+                        style(format_duration(result.elapsed, args.unit)).yellow(),
                         style(result.completed).blue(),
                         style(result.success).green(),
                         result.success_rate,
@@ -150,8 +161,8 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                             load_rs::Stats::Error => style(args.stats).red(),
                             load_rs::Stats::All => style(args.stats).blue(),
                         },
-                        style(result.min).yellow(),
-                        style(result.max).yellow(),
+                        style(format_duration(result.min, args.unit)).yellow(),
+                        style(format_duration(result.max, args.unit)).yellow(),
                     ));
                     pb.set_position(result.completed as u64);
                 },
@@ -166,11 +177,11 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {:.2?}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {:.2?}\n  Max: {:.2?}",
+                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {}\n  Max: {}",
                         style(&args.url).cyan().underlined(),
                         style(args.concurrency).yellow(),
                         style(format!("{:.1}", result.rps)).cyan(),
-                        style(result.elapsed).yellow(),
+                        style(format_duration(result.elapsed, args.unit)).yellow(),
                         style(result.completed).blue(),
                         style(result.success).green(),
                         result.success_rate,
@@ -181,8 +192,8 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                             load_rs::Stats::Error => style(args.stats).red(),
                             load_rs::Stats::All => style(args.stats).blue(),
                         },
-                        style(result.min).yellow(),
-                        style(result.max).yellow(),
+                        style(format_duration(result.min, args.unit)).yellow(),
+                        style(format_duration(result.max, args.unit)).yellow(),
                     ));
                     pb.set_position(result.completed as u64);
                 },
@@ -197,11 +208,11 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.output_dir.as_deref(),
                 |result| {
                     pb.set_message(format!(
-                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {:.2?}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {:.2?}\n  Max: {:.2?}",
+                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {}\n  Max: {}",
                         style(&args.url).cyan().underlined(),
                         style(args.concurrency).yellow(),
                         style(format!("{:.1}", result.rps)).cyan(),
-                        style(result.elapsed).yellow(),
+                        style(format_duration(result.elapsed, args.unit)).yellow(),
                         style(result.completed).blue(),
                         style(result.success).green(),
                         result.success_rate,
@@ -212,8 +223,8 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                             load_rs::Stats::Error => style(args.stats).red(),
                             load_rs::Stats::All => style(args.stats).blue(),
                         },
-                        style(result.min).yellow(),
-                        style(result.max).yellow(),
+                        style(format_duration(result.min, args.unit)).yellow(),
+                        style(format_duration(result.max, args.unit)).yellow(),
                     ));
                     pb.set_position(result.completed as u64);
                 },
@@ -228,7 +239,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
     println!("  RPS: {}", style(format!("{:.1}", result.rps)).cyan());
     println!(
         "  Duration: {}",
-        style(format!("{:.2?}", result.elapsed)).yellow()
+        style(format_duration(result.elapsed, args.unit)).yellow()
     );
 
     println!("\n{}", style("Requests:").bold());
@@ -253,12 +264,12 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
             load_rs::Stats::All => style(args.stats).blue(),
         }
     );
-    println!("  Avg: {:.2?}", style(result.avg).yellow());
-    println!("  Min: {:.2?}", style(result.min).yellow());
-    println!("  Max: {:.2?}", style(result.max).yellow());
-    println!("  P50: {:.2?}", style(result.p50).yellow());
-    println!("  P90: {:.2?}", style(result.p90).yellow());
-    println!("  P95: {:.2?}", style(result.p95).yellow());
+    println!("  Avg: {}", style(format_duration(result.avg, args.unit)).yellow());
+    println!("  Min: {}", style(format_duration(result.min, args.unit)).yellow());
+    println!("  Max: {}", style(format_duration(result.max, args.unit)).yellow());
+    println!("  P50: {}", style(format_duration(result.p50, args.unit)).yellow());
+    println!("  P90: {}", style(format_duration(result.p90, args.unit)).yellow());
+    println!("  P95: {}", style(format_duration(result.p95, args.unit)).yellow());
     Ok(())
 }
 

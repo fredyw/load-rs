@@ -139,6 +139,26 @@ impl FromStr for Stats {
     }
 }
 
+/// Unit of measurement (seconds or milliseconds).
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub enum Unit {
+    Seconds,
+    #[default]
+    Milliseconds,
+}
+
+impl FromStr for Unit {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "seconds" => Ok(Unit::Seconds),
+            "milliseconds" => Ok(Unit::Milliseconds),
+            _ => bail!("'{s}' is not a valid unit"),
+        }
+    }
+}
+
 impl std::fmt::Display for Stats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

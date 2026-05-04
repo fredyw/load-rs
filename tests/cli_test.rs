@@ -536,3 +536,26 @@ fn run_manifest_save_responses() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn run_unit_seconds() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args([
+        "-n",
+        "1",
+        "-c",
+        "1",
+        "-X",
+        "GET",
+        "-u",
+        "seconds",
+        "https://mockhttp.org/get",
+    ]);
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Duration:"))
+        .stdout(predicate::str::is_match(r"Duration:.*\d+\.\d{2}s.*")?);
+
+    Ok(())
+}
