@@ -9,7 +9,7 @@ use reqwest::{Certificate, Client, Identity, Response};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{Duration, Instant};
@@ -843,7 +843,7 @@ impl LoadTestRunner {
         num_requests: u32,
         output_dir: &Path,
         iteration: u64,
-        base_file_name: Option<&std::ffi::OsStr>,
+        base_file_name: Option<&OsStr>,
         success: bool,
     ) -> PathBuf {
         if let Some(base_file_name) = base_file_name {
@@ -1139,7 +1139,7 @@ mod tests {
             100,
             Path::new("/tmp"),
             3,
-            Some(std::ffi::OsStr::new("request")),
+            Some(OsStr::new("request")),
             true,
         );
         assert_eq!(output_file, Path::new("/tmp/success-003-request.json"));
@@ -1148,7 +1148,7 @@ mod tests {
             100,
             Path::new("/tmp"),
             3,
-            Some(std::ffi::OsStr::new("request")),
+            Some(OsStr::new("request")),
             false,
         );
         assert_eq!(output_file, Path::new("/tmp/failure-003-request.json"));
