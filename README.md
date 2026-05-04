@@ -51,6 +51,7 @@ Options:
   -o, --output-dir <OUTPUT_DIR>        Directory to save responses to
   -G, --debug                          Performs a single request and dumps the response
   -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: success]
+  -t, --timeout <TIMEOUT>              Request timeout in seconds
   -h, --help                           Print help
   -V, --version                        Print version
 ```
@@ -113,6 +114,10 @@ values are supported:
 - `success` (default): Only include successful requests in the statistics.
 - `error`: Only include failed requests in the statistics.
 - `all`: Include all requests (successful and failed) in the statistics.
+
+#### Timeout
+
+The `-t` or `--timeout` option allows you to set a timeout in seconds for each request. By default, requests do not time out.
 
 #### Debugging
 

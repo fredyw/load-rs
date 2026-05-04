@@ -151,6 +151,7 @@ async fn run_get() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -180,6 +181,7 @@ async fn run_head() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -209,6 +211,7 @@ async fn run_post() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -246,6 +249,7 @@ async fn run_put() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -283,6 +287,7 @@ async fn run_patch() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -320,6 +325,7 @@ async fn run_delete() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -357,6 +363,7 @@ async fn run_from_dir_sequential() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -395,6 +402,7 @@ async fn run_from_data_file() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -432,6 +440,7 @@ async fn run_from_dir_random() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -470,6 +479,7 @@ async fn run_from_dir_requests_less_than_files_sequential() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -508,6 +518,7 @@ async fn run_from_dir_requests_greater_than_files_sequential() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -546,6 +557,7 @@ async fn run_from_dir_requests_less_than_files_random() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -584,6 +596,7 @@ async fn run_from_dir_requests_greater_than_files_random() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -622,6 +635,7 @@ async fn run_from_manifest_random() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -657,6 +671,7 @@ async fn run_from_manifest_requests_less_than_files_sequential() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -692,6 +707,7 @@ async fn run_from_manifest_requests_greater_than_files_sequential() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -727,6 +743,7 @@ async fn run_from_manifest_requests_less_than_files_random() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -762,6 +779,7 @@ async fn run_from_manifest_requests_greater_than_files_random() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -797,6 +815,7 @@ async fn debug_get() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -817,6 +836,7 @@ async fn debug_head() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -837,6 +857,7 @@ async fn debug_post() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -866,6 +887,7 @@ async fn debug_put() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -895,6 +917,7 @@ async fn debug_patch() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -924,6 +947,7 @@ async fn debug_delete() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -953,6 +977,7 @@ async fn debug_from_data_file() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -982,6 +1007,7 @@ async fn debug_from_dir_sequential() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1012,6 +1038,7 @@ async fn debug_from_dir_random() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1042,6 +1069,7 @@ async fn debug_from_manifest_sequential() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1069,6 +1097,7 @@ async fn debug_from_manifest_random() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1102,6 +1131,7 @@ async fn run_success_save_responses() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1142,6 +1172,7 @@ async fn run_failure_save_responses() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1182,6 +1213,7 @@ async fn run_from_dir_success_save_responses() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1223,6 +1255,7 @@ async fn run_from_dir_failure_save_responses() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1264,6 +1297,7 @@ async fn run_from_manifest_success_save_responses() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1302,6 +1336,7 @@ async fn run_from_manifest_failure_save_responses() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1336,6 +1371,7 @@ async fn run_mtls_http1_valid_certs() {
         Some(Path::new("tests/tls/client.crt")),
         Some(Path::new("tests/tls/client.key")),
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1367,6 +1403,7 @@ async fn run_mtls_http2_valid_certs() {
         Some(Path::new("tests/tls/client.crt")),
         Some(Path::new("tests/tls/client.key")),
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1398,6 +1435,7 @@ async fn run_mtls_invalid_certs() {
         Some(Path::new("tests/tls/untrusted-client.crt")),
         Some(Path::new("tests/tls/untrusted-client.key")),
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1424,6 +1462,7 @@ async fn run_success_stats() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1459,6 +1498,7 @@ async fn run_success_stats() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1497,6 +1537,7 @@ async fn run_failure_stats() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1532,6 +1573,7 @@ async fn run_failure_stats() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1570,6 +1612,7 @@ async fn run_all_stats() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1605,6 +1648,7 @@ async fn run_all_stats() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1721,6 +1765,7 @@ async fn test_concurrency_limit() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1758,6 +1803,7 @@ async fn test_ui_debouncing() {
         None,
         None,
         false,
+        None,
     )
     .await
     .unwrap();
@@ -1786,4 +1832,30 @@ async fn test_ui_debouncing() {
         count >= 1,
         "Callback should be called at least once at the end"
     );
+}
+
+#[tokio::test]
+async fn run_with_timeout() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/delay/2",
+        1,
+        1,
+        Stats::All,
+        None,
+        None,
+        None,
+        false,
+        Some(1),
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run(HttpMethod::Get, None, None, None, |_| {})
+        .await
+        .unwrap();
+
+    assert_eq!(result.completed, 1);
+    assert_eq!(result.success, 0);
+    assert_eq!(result.failures, 1);
 }

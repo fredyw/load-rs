@@ -80,8 +80,8 @@ struct Args {
     stats: Stats,
 
     /// Request timeout in seconds.
-    #[arg(short = 't', long, default_value = "30")]
-    timeout: u64,
+    #[arg(short = 't', long)]
+    timeout: Option<u64>,
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -303,6 +303,7 @@ async fn main() -> Result<()> {
         args.cert.as_deref(),
         args.key.as_deref(),
         args.insecure,
+        args.timeout,
     )
     .await?;
     if args.debug {
