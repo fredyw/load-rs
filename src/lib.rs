@@ -358,6 +358,7 @@ impl LoadTestRunner {
     {
         let body = Arc::new(Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?);
         let headers = Arc::new(header.unwrap_or_default());
+        let save_response = output_dir.is_some();
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let semaphore = Arc::new(Semaphore::new(self.concurrency as usize));
         let runner = Arc::new(self.clone());
@@ -372,7 +373,7 @@ impl LoadTestRunner {
                 tokio::spawn(async move {
                     let _permit = permit;
                     let result = runner
-                        .timed_request(method, (*headers).clone(), (*body).clone(), i, None)
+                        .timed_request(method, (*headers).clone(), (*body).clone(), i, None, save_response)
                         .await;
                     let _ = tx.send(result).await;
                 });
@@ -430,6 +431,7 @@ impl LoadTestRunner {
                 path.file_stem().map(|f| f.to_owned()),
             ));
         }
+        let save_response = output_dir.is_some();
         let bodies = Arc::new(bodies);
         let headers = Arc::new(header.unwrap_or_default());
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
@@ -458,6 +460,7 @@ impl LoadTestRunner {
                             (*body).clone(),
                             i,
                             base_file_name,
+                            save_response,
                         )
                         .await;
                     let _ = tx.send(result).await;
@@ -518,6 +521,7 @@ impl LoadTestRunner {
             };
             templates.push((Arc::new(headers), Arc::new(body)));
         }
+        let save_response = output_dir.is_some();
         let templates = Arc::new(templates);
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let semaphore = Arc::new(Semaphore::new(self.concurrency as usize));
@@ -539,7 +543,7 @@ impl LoadTestRunner {
                     let headers = Arc::clone(headers);
                     let body = Arc::clone(body);
                     let result = runner
-                        .timed_request(method, (*headers).clone(), (*body).clone(), i, None)
+                        .timed_request(method, (*headers).clone(), (*body).clone(), i, None, save_response)
                         .await;
                     let _ = tx.send(result).await;
                 });
@@ -682,6 +686,7 @@ impl LoadTestRunner {
         body: Bytes,
         iteration: u64,
         base_file_name: Option<OsString>,
+        save_response: bool,
     ) -> (Result<ResponseData>, Duration, u64, Option<OsString>) {
         let start = Instant::now();
         let res = self.send_request(method, headers, body).await;
@@ -690,22 +695,44 @@ impl LoadTestRunner {
                 let version = resp.version();
                 let status = resp.status();
                 let headers = resp.headers().clone();
-                match resp.bytes().await {
-                    Ok(body) => {
-                        let duration = start.elapsed();
-                        (
-                            Ok(ResponseData {
-                                version,
-                                status,
-                                headers,
-                                body,
-                            }),
-                            duration,
-                            iteration,
-                            base_file_name,
-                        )
+                if save_response {
+                    match resp.bytes().await {
+                        Ok(body) => {
+                            let duration = start.elapsed();
+                            (
+                                Ok(ResponseData {
+                                    version,
+                                    status,
+                                    headers,
+                                    body,
+                                }),
+                                duration,
+                                iteration,
+                                base_file_name,
+                            )
+                        }
+                        Err(e) => (Err(e.into()), start.elapsed(), iteration, base_file_name),
                     }
-                    Err(e) => (Err(e.into()), start.elapsed(), iteration, base_file_name),
+                } else {
+                    use futures::StreamExt;
+                    let mut stream = resp.bytes_stream();
+                    while let Some(chunk) = stream.next().await {
+                        if let Err(e) = chunk {
+                            return (Err(e.into()), start.elapsed(), iteration, base_file_name);
+                        }
+                    }
+                    let duration = start.elapsed();
+                    (
+                        Ok(ResponseData {
+                            version,
+                            status,
+                            headers,
+                            body: Bytes::new(),
+                        }),
+                        duration,
+                        iteration,
+                        base_file_name,
+                    )
                 }
             }
             Err(e) => (Err(e), start.elapsed(), iteration, base_file_name),
