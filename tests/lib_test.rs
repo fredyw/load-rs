@@ -18,6 +18,7 @@ use std::io::BufReader;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::fs;
 use tokio::net::TcpListener;
 use tokio::sync::{OnceCell, oneshot};
@@ -1628,4 +1629,161 @@ async fn run_all_stats() {
     assert!(result.p90 > Default::default());
     assert!(result.p95 > Default::default());
     assert!(result.avg > Default::default());
+}
+
+use std::sync::atomic::{AtomicU32, Ordering};
+use tokio::time::sleep;
+
+struct PerformanceTestServer {
+    addr: SocketAddr,
+    max_active_connections: Arc<AtomicU32>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
+}
+
+impl Drop for PerformanceTestServer {
+    fn drop(&mut self) {
+        if let Some(tx) = self.shutdown_tx.take() {
+            let _ = tx.send(());
+        }
+    }
+}
+
+async fn run_perf_server() -> Result<PerformanceTestServer> {
+    let addr = SocketAddr::from(([127, 0, 0, 1], 0));
+    let listener = TcpListener::bind(addr).await?;
+    let server_addr = listener.local_addr()?;
+    let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
+    let active_connections = Arc::new(AtomicU32::new(0));
+    let max_active_connections = Arc::new(AtomicU32::new(0));
+    let active = Arc::clone(&active_connections);
+    let max_active = Arc::clone(&max_active_connections);
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                res = listener.accept() => {
+                    let (stream, _peer_addr) = match res {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    };
+                    let active = Arc::clone(&active);
+                    let max_active = Arc::clone(&max_active);
+                    tokio::spawn(async move {
+                        let current = active.fetch_add(1, Ordering::SeqCst) + 1;
+                        loop {
+                            let prev_max = max_active.load(Ordering::SeqCst);
+                            if current <= prev_max {
+                                break;
+                            }
+                            if max_active.compare_exchange(prev_max, current, Ordering::SeqCst, Ordering::SeqCst).is_ok() {
+                                break;
+                            }
+                        }
+                        let io = TokioIo::new(stream);
+                        let service = service_fn(|_req| async {
+                            // Delay to ensure concurrency can be observed.
+                            sleep(Duration::from_millis(50)).await;
+                            Ok::<_, Infallible>(Response::new(Full::new(Bytes::from("Hello"))))
+                        });
+                        if let Err(err) = hyper::server::conn::http1::Builder::new()
+                            .serve_connection(io, service)
+                            .await
+                        {
+                            eprintln!("Error serving connection: {:?}", err);
+                        }
+                        active.fetch_sub(1, Ordering::SeqCst);
+                    });
+                }
+                _ = &mut shutdown_rx => {
+                    break;
+                }
+            }
+        }
+    });
+    Ok(PerformanceTestServer {
+        addr: server_addr,
+        max_active_connections,
+        shutdown_tx: Some(shutdown_tx),
+    })
+}
+
+#[tokio::test]
+async fn test_concurrency_limit() {
+    let server = run_perf_server().await.unwrap();
+    let url = format!("http://{}", server.addr);
+    let concurrency = 3;
+    let requests = 10;
+    let runner = LoadTestRunner::new(
+        &url,
+        requests,
+        concurrency,
+        Stats::All,
+        None,
+        None,
+        None,
+        false,
+    )
+    .await
+    .unwrap();
+    let result = runner
+        .run(HttpMethod::Get, None, None, None, |_| {})
+        .await
+        .unwrap();
+
+    assert_eq!(result.completed, requests);
+    assert_eq!(result.success, requests);
+
+    let max_conn = server.max_active_connections.load(Ordering::SeqCst);
+    // It should be exactly 'concurrency' because we have a delay and enough requests.
+    assert!(
+        max_conn <= concurrency,
+        "Observed concurrency {} exceeded limit {}",
+        max_conn,
+        concurrency
+    );
+    assert!(max_conn > 0);
+}
+
+#[tokio::test]
+async fn test_ui_debouncing() {
+    let server = run_perf_server().await.unwrap();
+    let url = format!("http://{}", server.addr);
+    let requests = 20;
+    let concurrency = 5;
+    let runner = LoadTestRunner::new(
+        &url,
+        requests,
+        concurrency,
+        Stats::All,
+        None,
+        None,
+        None,
+        false,
+    )
+    .await
+    .unwrap();
+    let callback_count = Arc::new(AtomicU32::new(0));
+    let cb = Arc::clone(&callback_count);
+    let result = runner
+        .run(HttpMethod::Get, None, None, None, move |_| {
+            cb.fetch_add(1, Ordering::SeqCst);
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result.completed, requests);
+
+    let count = callback_count.load(Ordering::SeqCst);
+    // With 20 requests and 50ms delay each, total time is roughly (20/5)*50ms = 200ms.
+    // With 100ms debouncing, we expect roughly 2-4 calls.
+    // Definitely less than 20.
+    assert!(
+        count < requests,
+        "Callback count {} should be less than total requests {}",
+        count,
+        requests
+    );
+    assert!(
+        count >= 1,
+        "Callback should be called at least once at the end"
+    );
 }

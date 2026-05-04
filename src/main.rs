@@ -78,6 +78,10 @@ struct Args {
     /// Specifies which requests to include in the statistics.
     #[arg(short = 's', long, default_value = "success")]
     stats: Stats,
+
+    /// Request timeout in seconds.
+    #[arg(short = 't', long, default_value = "30")]
+    timeout: u64,
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -140,7 +144,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                             load_rs::Stats::All => style(args.stats).blue(),
                         }
                     ));
-                    pb.inc(1);
+                    pb.set_position(result.completed as u64);
                 },
             )
             .await?
@@ -166,7 +170,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                             load_rs::Stats::All => style(args.stats).blue(),
                         }
                     ));
-                    pb.inc(1);
+                    pb.set_position(result.completed as u64);
                 },
             )
             .await?
@@ -194,7 +198,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                             load_rs::Stats::All => style(args.stats).blue(),
                         }
                     ));
-                    pb.inc(1);
+                    pb.set_position(result.completed as u64);
                 },
             )
             .await?

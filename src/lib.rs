@@ -2,7 +2,6 @@ use anyhow::{Result, bail};
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use bytes::Bytes;
-use futures::{Stream, StreamExt, stream};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::{Certificate, Client, Identity, Response};
 use serde::Deserialize;
@@ -16,6 +15,8 @@ use std::time::{Duration, Instant};
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::sync::{Semaphore, mpsc};
+use tokio::task::JoinSet;
 
 /// A load test runner responsible for configuring and executing a load test.
 #[derive(Debug, Clone)]
@@ -149,13 +150,13 @@ impl std::fmt::Display for Stats {
 }
 
 impl LoadTestResult {
-    fn new() -> Self {
+    fn new(capacity: usize) -> Self {
         LoadTestResult {
             success: 0,
             failures: 0,
             completed: 0,
             total_duration: Duration::default(),
-            durations: Vec::new(),
+            durations: Vec::with_capacity(capacity),
             avg: Duration::default(),
             min: Duration::default(),
             max: Duration::default(),
@@ -256,7 +257,9 @@ impl LoadTestRunner {
         }
         let mut builder = Client::builder()
             .use_rustls_tls()
-            .danger_accept_invalid_certs(insecure);
+            .danger_accept_invalid_certs(insecure)
+            .tcp_nodelay(true)
+            .pool_max_idle_per_host(concurrency as usize);
         if let Some(ca_cert_path) = ca_cert {
             if !ca_cert_path.is_file() {
                 bail!(
@@ -314,17 +317,27 @@ impl LoadTestRunner {
     {
         let body = Arc::new(Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?);
         let headers = Arc::new(header.unwrap_or_default());
-        let stream = stream::iter(0..self.requests as u64)
-            .map(|i| {
+        let (tx, rx) = mpsc::channel(self.concurrency as usize);
+        let semaphore = Arc::new(Semaphore::new(self.concurrency as usize));
+        let runner = Arc::new(self.clone());
+        tokio::spawn(async move {
+            for i in 0..runner.requests as u64 {
+                let permit = semaphore.clone().acquire_owned().await.unwrap();
+                let tx = tx.clone();
                 let headers = Arc::clone(&headers);
                 let body = Arc::clone(&body);
-                async move {
-                    self.timed_request(method, (*headers).clone(), (*body).clone(), i, None)
-                        .await
-                }
-            })
-            .buffer_unordered(self.concurrency as usize);
-        self.process_stream(stream, in_progress, output_dir).await
+                let runner = Arc::clone(&runner);
+
+                tokio::spawn(async move {
+                    let _permit = permit;
+                    let result = runner
+                        .timed_request(method, (*headers).clone(), (*body).clone(), i, None)
+                        .await;
+                    let _ = tx.send(result).await;
+                });
+            }
+        });
+        self.process_results(rx, in_progress, output_dir).await
     }
 
     /// Executes the load test with request bodies from files in a directory and streams progress
@@ -378,30 +391,39 @@ impl LoadTestRunner {
         }
         let bodies = Arc::new(bodies);
         let headers = Arc::new(header.unwrap_or_default());
-        let stream = stream::iter(0..self.requests as u64)
-            .map(|i| {
+        let (tx, rx) = mpsc::channel(self.concurrency as usize);
+        let semaphore = Arc::new(Semaphore::new(self.concurrency as usize));
+        let runner = Arc::new(self.clone());
+        tokio::spawn(async move {
+            for i in 0..runner.requests as u64 {
+                let permit = semaphore.clone().acquire_owned().await.unwrap();
+                let tx = tx.clone();
                 let headers = Arc::clone(&headers);
                 let bodies = Arc::clone(&bodies);
-                let index = match order {
-                    Order::Sequential => i as usize % bodies.len(),
-                    Order::Random => rand::random_range(0..bodies.len()),
-                };
-                let (body, base_file_name) = &bodies[index];
-                let body = Arc::clone(body);
-                let base_file_name = base_file_name.clone();
-                async move {
-                    self.timed_request(
-                        method,
-                        (*headers).clone(),
-                        (*body).clone(),
-                        i,
-                        base_file_name,
-                    )
-                    .await
-                }
-            })
-            .buffer_unordered(self.concurrency as usize);
-        self.process_stream(stream, in_progress, output_dir).await
+                let runner = Arc::clone(&runner);
+                tokio::spawn(async move {
+                    let _permit = permit;
+                    let index = match order {
+                        Order::Sequential => i as usize % bodies.len(),
+                        Order::Random => rand::random_range(0..bodies.len()),
+                    };
+                    let (body, base_file_name) = &bodies[index];
+                    let body = Arc::clone(body);
+                    let base_file_name = base_file_name.clone();
+                    let result = runner
+                        .timed_request(
+                            method,
+                            (*headers).clone(),
+                            (*body).clone(),
+                            i,
+                            base_file_name,
+                        )
+                        .await;
+                    let _ = tx.send(result).await;
+                });
+            }
+        });
+        self.process_results(rx, in_progress, output_dir).await
     }
 
     /// Executes the load test with a request manifest file and streams progress updates via a
@@ -456,23 +478,33 @@ impl LoadTestRunner {
             templates.push((Arc::new(headers), Arc::new(body)));
         }
         let templates = Arc::new(templates);
-        let stream = stream::iter(0..self.requests as u64)
-            .map(|i| {
+        let (tx, rx) = mpsc::channel(self.concurrency as usize);
+        let semaphore = Arc::new(Semaphore::new(self.concurrency as usize));
+        let runner = Arc::new(self.clone());
+        tokio::spawn(async move {
+            for i in 0..runner.requests as u64 {
+                let permit = semaphore.clone().acquire_owned().await.unwrap();
+                let tx = tx.clone();
                 let templates = Arc::clone(&templates);
-                let index = match order {
-                    Order::Sequential => i as usize % templates.len(),
-                    Order::Random => rand::random_range(0..templates.len()),
-                };
-                let (headers, body) = &templates[index];
-                let headers = Arc::clone(headers);
-                let body = Arc::clone(body);
-                async move {
-                    self.timed_request(method, (*headers).clone(), (*body).clone(), i, None)
-                        .await
-                }
-            })
-            .buffer_unordered(self.concurrency as usize);
-        self.process_stream(stream, in_progress, output_dir).await
+                let runner = Arc::clone(&runner);
+
+                tokio::spawn(async move {
+                    let _permit = permit;
+                    let index = match order {
+                        Order::Sequential => i as usize % templates.len(),
+                        Order::Random => rand::random_range(0..templates.len()),
+                    };
+                    let (headers, body) = &templates[index];
+                    let headers = Arc::clone(headers);
+                    let body = Arc::clone(body);
+                    let result = runner
+                        .timed_request(method, (*headers).clone(), (*body).clone(), i, None)
+                        .await;
+                    let _ = tx.send(result).await;
+                });
+            }
+        });
+        self.process_results(rx, in_progress, output_dir).await
     }
 
     /// Executes a single request for debugging.
@@ -663,29 +695,26 @@ impl LoadTestRunner {
         Ok(file_names)
     }
 
-    async fn process_stream<S, F>(
+    async fn process_results<F>(
         &self,
-        mut stream: S,
+        mut rx: mpsc::Receiver<(Result<Response>, Duration, u64, Option<OsString>)>,
         in_progress: F,
         output_dir: Option<&Path>,
     ) -> Result<LoadTestResult>
     where
-        S: Stream<
-                Item = (
-                    Result<Response, anyhow::Error>,
-                    Duration,
-                    u64,
-                    Option<OsString>,
-                ),
-            > + Unpin,
         F: Fn(&LoadTestResult),
     {
-        let mut result = LoadTestResult::new();
+        let mut result = LoadTestResult::new(self.requests as usize);
         if let Some(output_dir) = output_dir {
             fs::create_dir_all(output_dir).await?;
         }
         let test_time = Instant::now();
-        while let Some((res, duration, iteration, base_file_name)) = stream.next().await {
+        let mut last_update = Instant::now();
+        let update_interval = Duration::from_millis(100);
+        let output_dir = output_dir.map(|p| p.to_path_buf());
+        let requests = self.requests;
+        let mut file_tasks = JoinSet::new();
+        while let Some((res, duration, iteration, base_file_name)) = rx.recv().await {
             result.completed += 1;
             match res {
                 Ok(response) => {
@@ -693,15 +722,21 @@ impl LoadTestRunner {
                     if self.stats == Stats::All || self.stats == Stats::Success {
                         Self::update_stats(&mut result, duration)
                     }
-                    if let Some(output_dir) = output_dir {
-                        let output_file = Self::get_output_file(
-                            self.requests,
-                            output_dir,
-                            iteration + 1,
-                            base_file_name.as_deref(),
-                            true,
-                        );
-                        Self::write_success_output_file(&output_file, response, duration).await?;
+                    if let Some(output_dir) = &output_dir {
+                        let output_dir = output_dir.clone();
+                        let base_file_name = base_file_name.clone();
+                        file_tasks.spawn(async move {
+                            let output_file = Self::get_output_file(
+                                requests,
+                                &output_dir,
+                                iteration + 1,
+                                base_file_name.as_deref(),
+                                true,
+                            );
+                            let _ =
+                                Self::write_success_output_file(output_file, response, duration)
+                                    .await;
+                        });
                     }
                 }
                 Err(error) => {
@@ -709,30 +744,49 @@ impl LoadTestRunner {
                     if self.stats == Stats::All || self.stats == Stats::Error {
                         Self::update_stats(&mut result, duration)
                     }
-                    if let Some(output_dir) = output_dir {
-                        let output_file = Self::get_output_file(
-                            self.requests,
-                            output_dir,
-                            iteration + 1,
-                            base_file_name.as_deref(),
-                            false,
-                        );
-                        Self::write_failure_output_file(&output_file, &error).await?;
+                    if let Some(output_dir) = &output_dir {
+                        let output_dir = output_dir.clone();
+                        let base_file_name = base_file_name.clone();
+                        file_tasks.spawn(async move {
+                            let output_file = Self::get_output_file(
+                                requests,
+                                &output_dir,
+                                iteration + 1,
+                                base_file_name.as_deref(),
+                                false,
+                            );
+                            let _ = Self::write_failure_output_file(output_file, error).await;
+                        });
                     }
                 }
             }
-            result.elapsed = test_time.elapsed();
-            let elapsed_secs = result.elapsed.as_secs_f64();
-            if elapsed_secs > 0.0 {
-                result.rps = result.completed as f64 / elapsed_secs;
+            if last_update.elapsed() >= update_interval {
+                result.elapsed = test_time.elapsed();
+                let elapsed_secs = result.elapsed.as_secs_f64();
+                if elapsed_secs > 0.0 {
+                    result.rps = result.completed as f64 / elapsed_secs;
+                }
+                if result.completed > 0 {
+                    result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
+                    result.failure_rate =
+                        (result.failures as f64 / result.completed as f64) * 100.0;
+                }
+                in_progress(&result);
+                last_update = Instant::now();
             }
-            if result.completed > 0 {
-                result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
-                result.failure_rate = (result.failures as f64 / result.completed as f64) * 100.0;
-            }
-            in_progress(&result);
         }
-
+        result.elapsed = test_time.elapsed();
+        let elapsed_secs = result.elapsed.as_secs_f64();
+        if elapsed_secs > 0.0 {
+            result.rps = result.completed as f64 / elapsed_secs;
+        }
+        if result.completed > 0 {
+            result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
+            result.failure_rate = (result.failures as f64 / result.completed as f64) * 100.0;
+        }
+        in_progress(&result);
+        // Wait for all file writing tasks to complete.
+        while file_tasks.join_next().await.is_some() {}
         if let [p50, p90, p95] =
             Self::get_quantiles(&mut result.durations, &[0.5, 0.90, 0.95]).as_slice()
         {
@@ -752,14 +806,12 @@ impl LoadTestRunner {
             result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
             result.failure_rate = (result.failures as f64 / result.completed as f64) * 100.0;
         }
-
         Ok(result)
     }
 
     fn update_stats(result: &mut LoadTestResult, duration: Duration) {
         result.durations.push(duration);
         result.total_duration += duration;
-        result.avg = result.total_duration / result.durations.len() as u32;
         result.min = if result.min == Duration::default() {
             duration
         } else {
@@ -903,7 +955,7 @@ impl LoadTestRunner {
     }
 
     async fn write_success_output_file(
-        output_file: &Path,
+        output_file: PathBuf,
         response: Response,
         duration: Duration,
     ) -> Result<()> {
@@ -929,7 +981,7 @@ impl LoadTestRunner {
         Ok(fs::write(output_file, serde_json::to_string_pretty(&output)?).await?)
     }
 
-    async fn write_failure_output_file(output_file: &Path, error: &anyhow::Error) -> Result<()> {
+    async fn write_failure_output_file(output_file: PathBuf, error: anyhow::Error) -> Result<()> {
         let output = json!({
             "error": error.to_string(),
         });
