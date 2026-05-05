@@ -1137,7 +1137,8 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(bytes, "{\n  \"message\": \"hello1\"\n}\n".as_bytes());
+        let content = String::from_utf8(bytes.to_vec()).unwrap().replace("\r\n", "\n");
+        assert_eq!(content, "{\n  \"message\": \"hello1\"\n}\n");
     }
 
     #[tokio::test]

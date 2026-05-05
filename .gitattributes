@@ -1,0 +1,3 @@
+# Force LF for test data files to ensure cross-platform test consistency
+tests/**/*.json text eol=lf
+tests/**/*.jsonl text eol=lf
