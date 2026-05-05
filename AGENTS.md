@@ -31,6 +31,7 @@ Before submitting any change, ensure all tests pass:
 ## 4. Commit Messages
 - **Structure**: Every commit must have a clear title and a descriptive body.
 - **Content**: Explain *what* was changed and *why*. Avoid one-liner commits for non-trivial changes.
+- **Atomic Commits**: Keep each commit focused on a single logical change. Do not group unrelated changes (e.g., a bug fix and a refactor) into the same commit.
 - **Conciseness**: Be descriptive but avoid being overly verbose. Focus on key technical decisions or rationale.
 
 ## 5. Performance & Efficiency
