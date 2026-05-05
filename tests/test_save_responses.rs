@@ -152,7 +152,7 @@ async fn run_from_manifest_success_save_responses() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Sequential,
             Some(&output_dir),
             |_| {},
@@ -182,7 +182,7 @@ async fn run_from_manifest_failure_save_responses() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Sequential,
             Some(&output_dir),
             |_| {},

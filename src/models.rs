@@ -1,12 +1,14 @@
 use anyhow::{Result, bail};
 use bytes::Bytes;
 use reqwest::header::HeaderMap;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
 /// Defines the allowed HTTP methods that the user can specify.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum HttpMethod {
     Get,
     Post,

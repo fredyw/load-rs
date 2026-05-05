@@ -198,7 +198,7 @@ async fn debug_from_manifest_sequential() {
     let response = runner
         .debug_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Sequential,
         )
         .await
@@ -218,7 +218,7 @@ async fn debug_from_manifest_random() {
     let response = runner
         .debug_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Random,
         )
         .await

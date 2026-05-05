@@ -343,7 +343,7 @@ async fn run_from_manifest_random() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Random,
             None,
             |_| {},
@@ -365,7 +365,7 @@ async fn run_from_manifest_requests_less_than_files_sequential() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Sequential,
             None,
             |_| {},
@@ -393,7 +393,7 @@ async fn run_from_manifest_requests_greater_than_files_sequential() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Sequential,
             None,
             |_| {},
@@ -421,7 +421,7 @@ async fn run_from_manifest_requests_less_than_files_random() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Random,
             None,
             |_| {},
@@ -449,7 +449,7 @@ async fn run_from_manifest_requests_greater_than_files_random() {
     let result = runner
         .run_from_manifest(
             HttpMethod::Post,
-            Path::new("tests/test_manifests/manifest1.jsonl"),
+            Path::new("tests/test_manifests/requests.jsonl"),
             Order::Random,
             None,
             |_| {},
@@ -528,4 +528,26 @@ async fn run_from_empty_dir_fails() {
         .await;
 
     assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn run_from_manifest_with_overrides() {
+    let runner = LoadTestRunner::builder("https://mockhttp.org", 3, 1)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
+
+    let result = runner
+        .run_from_manifest(
+            HttpMethod::Get,
+            Path::new("tests/test_manifests/overrides.jsonl"),
+            Order::Sequential,
+            None,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_result(&result, 3, 3);
 }

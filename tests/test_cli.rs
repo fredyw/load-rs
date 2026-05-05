@@ -532,7 +532,7 @@ fn run_manifest_save_responses() -> Result<()> {
         "-X",
         "POST",
         "-m",
-        "tests/test_manifests/manifest1.jsonl",
+        "tests/test_manifests/requests.jsonl",
         "-O",
         "sequential",
         "-o",

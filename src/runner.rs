@@ -129,6 +129,8 @@ impl LoadTestRunnerBuilder {
 
 #[derive(Debug, Clone, Deserialize)]
 struct RequestTemplate {
+    method: Option<HttpMethod>,
+    path: Option<String>,
     #[serde(default)]
     headers: HashMap<String, String>,
     body: Option<String>,
@@ -332,16 +334,35 @@ impl LoadTestRunner {
     where
         T: Fn(LoadTestEvent),
     {
-        let body = Arc::new(Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?);
-        let headers = Arc::new(header.unwrap_or_default());
-        let base_req = self.build_request(method, (*headers).clone(), (*body).clone())?;
-
+        let body = Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?;
+        let headers = header.unwrap_or_default();
+        let req = self.build_request(method, &self.url, headers, body)?;
+        let req = Arc::new(req);
         self.run_with_generator(
-            move |_| Ok((base_req.try_clone().unwrap(), None)),
+            move |_| Ok(((*req).try_clone().unwrap(), None)),
             output_dir,
             in_progress,
         )
         .await
+    }
+
+    fn join_url(base: &str, path: Option<&str>) -> Result<String> {
+        if let Some(path) = path {
+            let mut url = reqwest::Url::parse(base)?;
+            if path.starts_with('/') {
+                url.set_path(path);
+            } else {
+                let mut current_path = url.path().to_string();
+                if !current_path.ends_with('/') {
+                    current_path.push('/');
+                }
+                current_path.push_str(path);
+                url.set_path(&current_path);
+            }
+            Ok(url.to_string())
+        } else {
+            Ok(base.to_string())
+        }
     }
 
     /// Executes the load test using request bodies from a directory.
@@ -387,8 +408,12 @@ impl LoadTestRunner {
         }
         let mut reqs = Vec::new();
         for (body, base_file_name) in bodies.iter() {
-            let req =
-                self.build_request(method, header.clone().unwrap_or_default(), (**body).clone())?;
+            let req = self.build_request(
+                method,
+                &self.url,
+                header.clone().unwrap_or_default(),
+                (**body).clone(),
+            )?;
             reqs.push((req, base_file_name.clone()));
         }
         let reqs = Arc::new(reqs);
@@ -433,7 +458,7 @@ impl LoadTestRunner {
         let file = tokio::fs::File::open(manifest_file).await?;
         let reader = tokio::io::BufReader::new(file);
         let mut lines = tokio::io::AsyncBufReadExt::lines(reader);
-        let mut templates = Vec::new();
+        let mut reqs = Vec::new();
         while let Some(line) = lines.next_line().await? {
             let template: RequestTemplate = serde_json::from_str(&line)?;
             let mut headers = HeaderMap::new();
@@ -447,18 +472,16 @@ impl LoadTestRunner {
             } else {
                 Bytes::new()
             };
-            templates.push((Arc::new(headers), Arc::new(body)));
+            let req_method = template.method.unwrap_or(method);
+            let req_url = Self::join_url(&self.url, template.path.as_deref())?;
+            let req = self.build_request(req_method, &req_url, headers, body)?;
+            reqs.push(req);
         }
-        if templates.is_empty() {
+        if reqs.is_empty() {
             bail!(
                 "No requests found in manifest file '{}'",
                 manifest_file.display()
             );
-        }
-        let mut reqs = Vec::new();
-        for (headers, body) in templates.iter() {
-            let req = self.build_request(method, (**headers).clone(), (**body).clone())?;
-            reqs.push(req);
         }
         let reqs = Arc::new(reqs);
         self.run_with_generator(
@@ -494,7 +517,7 @@ impl LoadTestRunner {
     ) -> Result<Response> {
         let headers = header.unwrap_or_default();
         let body = Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?;
-        let req = self.build_request(method, headers, body)?;
+        let req = self.build_request(method, &self.url, headers, body)?;
         let res = self.client.execute(req).await?;
         Ok(res.error_for_status()?)
     }
@@ -534,7 +557,7 @@ impl LoadTestRunner {
             Order::Random => rand::random_range(0..file_names.len()),
         };
         let body = fs::read(&file_names[index]).await?.into();
-        let req = self.build_request(method, headers, body)?;
+        let req = self.build_request(method, &self.url, headers, body)?;
         let res = self.client.execute(req).await?;
         Ok(res.error_for_status()?)
     }
@@ -585,7 +608,9 @@ impl LoadTestRunner {
         } else {
             Bytes::new()
         };
-        let req = self.build_request(method, headers, body)?;
+        let req_method = template.method.unwrap_or(method);
+        let req_url = Self::join_url(&self.url, template.path.as_deref())?;
+        let req = self.build_request(req_method, &req_url, headers, body)?;
         let res = self.client.execute(req).await?;
         Ok(res.error_for_status()?)
     }
@@ -593,6 +618,7 @@ impl LoadTestRunner {
     fn build_request(
         &self,
         method: HttpMethod,
+        url: &str,
         headers: HeaderMap,
         body: Bytes,
     ) -> Result<reqwest::Request> {
@@ -604,7 +630,7 @@ impl LoadTestRunner {
             HttpMethod::Patch => reqwest::Method::PATCH,
             HttpMethod::Head => reqwest::Method::HEAD,
         };
-        let mut req = self.client.request(req_method, &self.url).headers(headers);
+        let mut req = self.client.request(req_method, url).headers(headers);
         if !body.is_empty() {
             req = req.body(body);
         }

@@ -1,0 +1,3 @@
+{"method": "post", "path": "/post", "headers": {"content-type": "application/json"}, "body": "{\"msg\": \"hello\"}"}
+{"method": "get", "path": "/get", "headers": {"x-custom": "val"}}
+{"path": "/status/200"}

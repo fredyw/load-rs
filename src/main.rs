@@ -43,7 +43,7 @@ struct Args {
     #[arg(short = 'i', long = "data-dir", group = "request_body")]
     data_dir: Option<PathBuf>,
 
-    /// Request manifest file (JSON Lines format).
+    /// Request manifest file (JSON Lines format)
     #[arg(short = 'm', long = "manifest-file", group = "request_body")]
     manifest_file: Option<PathBuf>,
 
