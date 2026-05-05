@@ -249,6 +249,19 @@ struct RequestTemplate {
     binary_body: Option<String>,
 }
 
+enum WorkerResult {
+    StatsOnly {
+        success: bool,
+        duration: Duration,
+    },
+    WithResponse {
+        res: Result<ResponseData>,
+        duration: Duration,
+        iteration: u64,
+        base_file_name: Option<OsString>,
+    },
+}
+
 impl LoadTestRunner {
     /// Creates a new `LoadTestRunner` with the specified configuration.
     ///
@@ -711,59 +724,70 @@ impl LoadTestRunner {
         iteration: u64,
         base_file_name: Option<OsString>,
         save_response: bool,
-    ) -> (Result<ResponseData>, Duration, u64, Option<OsString>) {
+    ) -> WorkerResult {
         let start = Instant::now();
         let res = self.client.execute(req).await;
         let res = match res {
             Ok(r) => r.error_for_status().map_err(anyhow::Error::from),
             Err(e) => Err(e.into()),
         };
-        match res {
-            Ok(resp) => {
-                let version = resp.version();
-                let status = resp.status();
-                let headers = resp.headers().clone();
-                if save_response {
-                    match resp.bytes().await {
-                        Ok(body) => {
-                            let duration = start.elapsed();
-                            (
-                                Ok(ResponseData {
-                                    version,
-                                    status,
-                                    headers,
-                                    body,
-                                }),
-                                duration,
-                                iteration,
-                                base_file_name,
-                            )
-                        }
-                        Err(e) => (Err(e.into()), start.elapsed(), iteration, base_file_name),
-                    }
-                } else {
+        let duration = start.elapsed();
+        if !save_response {
+            match res {
+                Ok(resp) => {
                     use futures::StreamExt;
                     let mut stream = resp.bytes_stream();
                     while let Some(chunk) = stream.next().await {
-                        if let Err(e) = chunk {
-                            return (Err(e.into()), start.elapsed(), iteration, base_file_name);
+                        if chunk.is_err() {
+                            return WorkerResult::StatsOnly {
+                                success: false,
+                                duration: start.elapsed(),
+                            };
                         }
                     }
-                    let duration = start.elapsed();
-                    (
-                        Ok(ResponseData {
-                            version,
-                            status,
-                            headers,
-                            body: Bytes::new(),
-                        }),
-                        duration,
-                        iteration,
-                        base_file_name,
-                    )
+                    WorkerResult::StatsOnly {
+                        success: true,
+                        duration: start.elapsed(),
+                    }
                 }
+                Err(_) => WorkerResult::StatsOnly {
+                    success: false,
+                    duration,
+                },
             }
-            Err(e) => (Err(e), start.elapsed(), iteration, base_file_name),
+        } else {
+            match res {
+                Ok(resp) => {
+                    let version = resp.version();
+                    let status = resp.status();
+                    let headers = resp.headers().clone();
+                    match resp.bytes().await {
+                        Ok(body) => WorkerResult::WithResponse {
+                            res: Ok(ResponseData {
+                                version,
+                                status,
+                                headers,
+                                body,
+                            }),
+                            duration: start.elapsed(),
+                            iteration,
+                            base_file_name,
+                        },
+                        Err(e) => WorkerResult::WithResponse {
+                            res: Err(e.into()),
+                            duration: start.elapsed(),
+                            iteration,
+                            base_file_name,
+                        },
+                    }
+                }
+                Err(e) => WorkerResult::WithResponse {
+                    res: Err(e),
+                    duration,
+                    iteration,
+                    base_file_name,
+                },
+            }
         }
     }
 
@@ -813,10 +837,9 @@ impl LoadTestRunner {
         }
         Ok(file_names)
     }
-
     async fn process_results<F>(
         &self,
-        mut rx: mpsc::Receiver<(Result<ResponseData>, Duration, u64, Option<OsString>)>,
+        mut rx: mpsc::Receiver<WorkerResult>,
         in_progress: F,
         output_dir: Option<&Path>,
     ) -> Result<LoadTestResult>
@@ -833,51 +856,74 @@ impl LoadTestRunner {
         let output_dir = output_dir.map(|p| p.to_path_buf());
         let requests = self.requests;
         let mut file_tasks = JoinSet::new();
-        while let Some((res, duration, iteration, base_file_name)) = rx.recv().await {
+        while let Some(worker_res) = rx.recv().await {
             result.completed += 1;
-            match res {
-                Ok(response) => {
-                    result.success += 1;
-                    if self.stats == Stats::All || self.stats == Stats::Success {
-                        Self::update_stats(&mut result, duration)
-                    }
-                    if let Some(output_dir) = &output_dir {
-                        let output_dir = output_dir.clone();
-                        let base_file_name = base_file_name.clone();
-                        file_tasks.spawn(async move {
-                            let output_file = Self::get_output_file(
-                                requests,
-                                &output_dir,
-                                iteration + 1,
-                                base_file_name.as_deref(),
-                                true,
-                            );
-                            let _ =
-                                Self::write_success_output_file(output_file, response, duration)
-                                    .await;
-                        });
+            match worker_res {
+                WorkerResult::StatsOnly { success, duration } => {
+                    if success {
+                        result.success += 1;
+                        if self.stats == Stats::All || self.stats == Stats::Success {
+                            Self::update_stats(&mut result, duration)
+                        }
+                    } else {
+                        result.failures += 1;
+                        if self.stats == Stats::All || self.stats == Stats::Error {
+                            Self::update_stats(&mut result, duration)
+                        }
                     }
                 }
-                Err(error) => {
-                    result.failures += 1;
-                    if self.stats == Stats::All || self.stats == Stats::Error {
-                        Self::update_stats(&mut result, duration)
+                WorkerResult::WithResponse {
+                    res,
+                    duration,
+                    iteration,
+                    base_file_name,
+                } => match res {
+                    Ok(response) => {
+                        result.success += 1;
+                        if self.stats == Stats::All || self.stats == Stats::Success {
+                            Self::update_stats(&mut result, duration)
+                        }
+                        if let Some(output_dir) = &output_dir {
+                            let output_dir = output_dir.clone();
+                            let base_file_name = base_file_name.clone();
+                            file_tasks.spawn(async move {
+                                let output_file = Self::get_output_file(
+                                    requests,
+                                    &output_dir,
+                                    iteration + 1,
+                                    base_file_name.as_deref(),
+                                    true,
+                                );
+                                let _ = Self::write_success_output_file(
+                                    output_file,
+                                    response,
+                                    duration,
+                                )
+                                .await;
+                            });
+                        }
                     }
-                    if let Some(output_dir) = &output_dir {
-                        let output_dir = output_dir.clone();
-                        let base_file_name = base_file_name.clone();
-                        file_tasks.spawn(async move {
-                            let output_file = Self::get_output_file(
-                                requests,
-                                &output_dir,
-                                iteration + 1,
-                                base_file_name.as_deref(),
-                                false,
-                            );
-                            let _ = Self::write_failure_output_file(output_file, error).await;
-                        });
+                    Err(error) => {
+                        result.failures += 1;
+                        if self.stats == Stats::All || self.stats == Stats::Error {
+                            Self::update_stats(&mut result, duration)
+                        }
+                        if let Some(output_dir) = &output_dir {
+                            let output_dir = output_dir.clone();
+                            let base_file_name = base_file_name.clone();
+                            file_tasks.spawn(async move {
+                                let output_file = Self::get_output_file(
+                                    requests,
+                                    &output_dir,
+                                    iteration + 1,
+                                    base_file_name.as_deref(),
+                                    false,
+                                );
+                                let _ = Self::write_failure_output_file(output_file, error).await;
+                            });
+                        }
                     }
-                }
+                },
             }
             if last_update.elapsed() >= update_interval {
                 result.elapsed = test_time.elapsed();
