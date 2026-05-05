@@ -351,6 +351,8 @@ pub struct LoadTestConfig {
     pub quiet: bool,
     /// Specifies what to save in the response output.
     pub save_mode: SaveMode,
+    /// Disables HTTP keep-alive.
+    pub disable_keepalive: bool,
 }
 
 /// Events emitted during the load test.

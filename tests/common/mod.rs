@@ -143,6 +143,7 @@ pub async fn load_key(path: &Path) -> Result<PrivateKeyDer<'static>> {
 pub struct PerformanceTestServer {
     pub addr: SocketAddr,
     pub max_active_connections: Arc<AtomicU32>,
+    pub total_connections: Arc<AtomicU32>,
     pub shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
@@ -161,8 +162,10 @@ pub async fn run_perf_server() -> Result<PerformanceTestServer> {
     let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
     let active_connections = Arc::new(AtomicU32::new(0));
     let max_active_connections = Arc::new(AtomicU32::new(0));
+    let total_connections = Arc::new(AtomicU32::new(0));
     let active = Arc::clone(&active_connections);
     let max_active = Arc::clone(&max_active_connections);
+    let total = Arc::clone(&total_connections);
     tokio::spawn(async move {
         loop {
             tokio::select! {
@@ -171,6 +174,7 @@ pub async fn run_perf_server() -> Result<PerformanceTestServer> {
                         Ok(res) => res,
                         Err(_) => continue,
                     };
+                    total.fetch_add(1, Ordering::SeqCst);
                     let active = Arc::clone(&active);
                     let max_active = Arc::clone(&max_active);
                     tokio::spawn(async move {
@@ -208,6 +212,7 @@ pub async fn run_perf_server() -> Result<PerformanceTestServer> {
     Ok(PerformanceTestServer {
         addr: server_addr,
         max_active_connections,
+        total_connections,
         shutdown_tx: Some(shutdown_tx),
     })
 }

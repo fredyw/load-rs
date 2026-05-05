@@ -102,6 +102,10 @@ struct Args {
     /// Quiet mode: suppress progress updates.
     #[arg(short = 'q', long)]
     quiet: bool,
+
+    /// Disables HTTP keep-alive.
+    #[arg(long)]
+    disable_keepalive: bool,
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -400,7 +404,8 @@ async fn main() -> Result<()> {
         .stats(args.stats)
         .insecure(args.insecure)
         .quiet(args.quiet)
-        .save_mode(args.save_mode);
+        .save_mode(args.save_mode)
+        .disable_keepalive(args.disable_keepalive);
 
     if let Some(ca_cert) = &args.ca_cert {
         builder = builder.ca_cert(ca_cert);

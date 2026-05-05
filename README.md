@@ -64,6 +64,7 @@ Options:
   -p, --proxy <PROXY>                  Proxy server URL
   -u, --unit <UNIT>                    Unit of measurement (seconds or milliseconds) [default: milliseconds]
   -q, --quiet                          Quiet mode: suppress progress updates
+      --disable-keepalive              Disables HTTP keep-alive
   -h, --help                           Print help
   -V, --version                        Print version
 ```
@@ -157,7 +158,12 @@ The `-u` or `--unit` option allows you to configure the unit of measurement used
 
 #### Quiet Mode
 
-The `-q` or `--quiet` option suppresses the real-time progress bar and updates during the test. This can slightly improve performance by reducing terminal I/O and local CPU overhead, and is useful for automation or when redirecting output to a file.
+The `-q` or `--quiet` option suppresses the real-time progress bar and updates during the test.
+ This can slightly improve performance by reducing terminal I/O and local CPU overhead, and is useful for automation or when redirecting output to a file.
+
+#### Connection Control
+
+The `--disable-keepalive` flag disables HTTP keep-alive. By default, `load-rs` reuses connections to improve performance. Disabling it forces the tool to create a new TCP connection for every request, which is useful for simulating "cold" clients or high connection churn.
 
 #### Debugging
 
@@ -254,6 +260,7 @@ async fn main() -> anyhow::Result<()> {
         .stats(Stats::All)
         .save_mode(load_rs::SaveMode::Headers)
         .timeout(30)
+        .disable_keepalive(true)
         .build()
         .await?;
 

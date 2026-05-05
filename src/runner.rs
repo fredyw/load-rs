@@ -65,6 +65,7 @@ impl LoadTestRunnerBuilder {
                 proxy: None,
                 quiet: false,
                 save_mode: crate::models::SaveMode::All,
+                disable_keepalive: false,
             },
         }
     }
@@ -126,6 +127,12 @@ impl LoadTestRunnerBuilder {
     /// Sets the save mode for response output.
     pub fn save_mode(mut self, mode: crate::models::SaveMode) -> Self {
         self.config.save_mode = mode;
+        self
+    }
+
+    /// Disables HTTP keep-alive.
+    pub fn disable_keepalive(mut self, disable: bool) -> Self {
+        self.config.disable_keepalive = disable;
         self
     }
 
@@ -200,8 +207,13 @@ impl LoadTestRunner {
         let mut builder = Client::builder()
             .use_rustls_tls()
             .danger_accept_invalid_certs(config.insecure)
-            .tcp_nodelay(true)
-            .pool_max_idle_per_host(config.concurrency as usize);
+            .tcp_nodelay(true);
+
+        if config.disable_keepalive {
+            builder = builder.pool_max_idle_per_host(0);
+        } else {
+            builder = builder.pool_max_idle_per_host(config.concurrency as usize);
+        }
         if let Some(t) = config.timeout {
             builder = builder.timeout(Duration::from_secs(t));
         }
