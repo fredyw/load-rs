@@ -131,7 +131,13 @@ fn create_progress_bar(len: u32) -> Result<ProgressBar> {
     let pb = ProgressBar::new(len as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("[{elapsed_precise:.yellow}] [{bar:40.cyan/blue}] {pos:.blue}/{len:.blue} ({percent:.blue}%)\n\n{msg}")?
+            .template(&format!(
+                "[{}] [{}] {} {}\n\n{{msg}}",
+                style("{elapsed_precise}").yellow(),
+                style("{bar:40.cyan/blue}").blue(),
+                style("{pos}/{len}").blue(),
+                style("({percent}%)").blue(),
+            ))?
             .progress_chars("#>-"),
     );
     pb.set_position(0);
@@ -148,8 +154,8 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
             "  Duration: {}\n\n",
             "{}\n",
             "  Total: {}\n",
-            "  Success: {} ({:.1}%)\n",
-            "  Failures: {} ({:.1}%)\n\n",
+            "  Success: {} {}\n",
+            "  Failures: {} {}\n\n",
             "{} (Filter: {}):\n",
             "  Avg: {}\n",
             "  Min: {}\n",
@@ -167,9 +173,9 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
         style("Requests:").bold(),
         style(result.completed).blue(),
         style(result.success).green(),
-        result.success_rate,
+        style(format!("({:.1}%)", result.success_rate)).green(),
         style(result.failures).red(),
-        result.failure_rate,
+        style(format!("({:.1}%)", result.failure_rate)).red(),
         style("Latency").bold(),
         match args.stats {
             load_rs::Stats::Success => style(args.stats).green(),
@@ -256,14 +262,14 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
     println!("\n{}", style("Requests:").bold());
     println!("  Total: {}", style(result.completed).blue());
     println!(
-        "  Success: {} ({:.1}%)",
+        "  Success: {} {}",
         style(result.success).green(),
-        result.success_rate
+        style(format!("({:.1}%)", result.success_rate)).green()
     );
     println!(
-        "  Failures: {} ({:.1}%)",
+        "  Failures: {} {}",
         style(result.failures).red(),
-        result.failure_rate
+        style(format!("({:.1}%)", result.failure_rate)).red()
     );
 
     println!(
