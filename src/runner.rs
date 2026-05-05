@@ -351,9 +351,10 @@ impl LoadTestRunner {
                         break;
                     }
                     if let Some(duration) = runner.duration
-                        && start_time.elapsed() >= duration {
-                            break;
-                        }
+                        && start_time.elapsed() >= duration
+                    {
+                        break;
+                    }
                     let req_gen_result = generator.generate(i);
                     let result = match req_gen_result {
                         Ok((req, name)) => runner.timed_request(req, i, name, save_response).await,
