@@ -4,6 +4,7 @@ use reqwest::header::HeaderMap;
 use std::path::Path;
 
 mod common;
+use common::*;
 
 #[tokio::test]
 async fn run_get() {
@@ -28,13 +29,7 @@ async fn run_get() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -60,13 +55,7 @@ async fn run_head() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -100,13 +89,7 @@ async fn run_post() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -140,13 +123,7 @@ async fn run_put() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -180,13 +157,7 @@ async fn run_patch() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -220,13 +191,7 @@ async fn run_delete() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -261,13 +226,7 @@ async fn run_from_dir_sequential() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -301,13 +260,7 @@ async fn run_from_data_file() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -342,13 +295,7 @@ async fn run_from_dir_random() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -544,13 +491,7 @@ async fn run_from_manifest_random() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 5);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 5);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 5, 5);
 }
 
 #[tokio::test]
@@ -696,11 +637,104 @@ async fn run_from_manifest_requests_greater_than_files_random() {
         .await
         .unwrap();
 
-    assert_eq!(result.success, 7);
-    assert_eq!(result.failures, 0);
-    assert_eq!(result.completed, 7);
-    assert!(result.p50 > Default::default());
-    assert!(result.p90 > Default::default());
-    assert!(result.p95 > Default::default());
-    assert!(result.avg > Default::default());
+    assert_result(&result, 7, 7);
+}
+
+#[tokio::test]
+async fn run_with_timeout() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/delay/2",
+        1,
+        1,
+        Stats::All,
+        None,
+        None,
+        None,
+        false,
+        Some(1),
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run(HttpMethod::Get, None, None, None, |_| {})
+        .await
+        .unwrap();
+
+    assert_eq!(result.completed, 1);
+    assert_eq!(result.success, 0);
+    assert_eq!(result.failures, 1);
+}
+
+#[tokio::test]
+async fn test_run_with_generator() {
+    let server = run_perf_server().await.unwrap();
+    let url = format!("http://{}", server.addr);
+
+    let runner = LoadTestRunner::new(
+        &url,
+        5,
+        2,
+        Stats::All,
+        None,
+        None,
+        None,
+        false,
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run_with_generator(
+            move |iteration: u64| {
+                let req = reqwest::Client::new()
+                    .get(&url)
+                    .header("X-Iteration", iteration.to_string())
+                    .build()?;
+                Ok((req, None))
+            },
+            None,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_result(&result, 5, 5);
+}
+
+#[tokio::test]
+async fn run_from_empty_dir_fails() {
+    let runner = LoadTestRunner::new(
+        "http://localhost:8080",
+        5,
+        2,
+        Stats::All,
+        None,
+        None,
+        None,
+        false,
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let result = runner
+        .run_from_dir(
+            HttpMethod::Post,
+            None,
+            std::path::Path::new("tests/empty_dir"),
+            Order::Sequential,
+            None,
+            |_| {},
+        )
+        .await;
+
+    assert!(result.is_err());
 }

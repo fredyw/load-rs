@@ -296,6 +296,9 @@ impl LoadTestRunner {
             bail!("HTTP method '{:?}' not supported", method);
         }
         let mut file_names = Self::get_file_names(data_dir).await?;
+        if file_names.is_empty() {
+            bail!("No files found in directory '{}'", data_dir.display());
+        }
         file_names.sort();
         let mut bodies = Vec::new();
         for path in &file_names {
@@ -369,6 +372,12 @@ impl LoadTestRunner {
             };
             templates.push((Arc::new(headers), Arc::new(body)));
         }
+        if templates.is_empty() {
+            bail!(
+                "No requests found in manifest file '{}'",
+                manifest_file.display()
+            );
+        }
         let mut reqs = Vec::new();
         for (headers, body) in templates.iter() {
             let req = self.build_request(method, (**headers).clone(), (**body).clone())?;
@@ -437,6 +446,9 @@ impl LoadTestRunner {
             bail!("HTTP method '{:?}' not supported", method);
         }
         let mut file_names = Self::get_file_names(data_dir).await?;
+        if file_names.is_empty() {
+            bail!("No files found in directory '{}'", data_dir.display());
+        }
         // Sort the file names to make it deterministic.
         file_names.sort();
         let headers = header.unwrap_or_default();
@@ -473,6 +485,12 @@ impl LoadTestRunner {
         while let Some(line) = lines.next_line().await? {
             let template = serde_json::from_str(&line)?;
             templates.push(template);
+        }
+        if templates.is_empty() {
+            bail!(
+                "No requests found in manifest file '{}'",
+                manifest_file.display()
+            );
         }
         let index = match order {
             Order::Sequential => 0,
@@ -901,6 +919,30 @@ mod tests {
         assert_eq!(result.url, "http://localhost:8080");
         assert_eq!(result.requests, 10);
         assert_eq!(result.concurrency, 2);
+    }
+
+    #[tokio::test]
+    async fn new_success() {
+        let runner = LoadTestRunner::new(
+            "http://localhost:8080",
+            10,
+            2,
+            Stats::Success,
+            None,
+            None,
+            None,
+            false,
+            Some(30),
+            Some("test-agent"),
+            None,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(runner.url, "http://localhost:8080");
+        assert_eq!(runner.requests, 10);
+        assert_eq!(runner.concurrency, 2);
+        assert_eq!(runner.stats, Stats::Success);
     }
 
     #[tokio::test]

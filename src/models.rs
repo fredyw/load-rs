@@ -102,6 +102,74 @@ impl LoadTestResult {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_http_method_from_str() {
+        assert_eq!(HttpMethod::from_str("get").unwrap(), HttpMethod::Get);
+        assert_eq!(HttpMethod::from_str("POST").unwrap(), HttpMethod::Post);
+        assert_eq!(HttpMethod::from_str("Put").unwrap(), HttpMethod::Put);
+        assert_eq!(HttpMethod::from_str("DELETE").unwrap(), HttpMethod::Delete);
+        assert_eq!(HttpMethod::from_str("patch").unwrap(), HttpMethod::Patch);
+        assert_eq!(HttpMethod::from_str("HEAD").unwrap(), HttpMethod::Head);
+        assert!(HttpMethod::from_str("invalid").is_err());
+    }
+
+    #[test]
+    fn test_order_from_str() {
+        assert_eq!(Order::from_str("sequential").unwrap(), Order::Sequential);
+        assert_eq!(Order::from_str("RANDOM").unwrap(), Order::Random);
+        assert!(Order::from_str("invalid").is_err());
+    }
+
+    #[test]
+    fn test_stats_from_str() {
+        assert_eq!(Stats::from_str("success").unwrap(), Stats::Success);
+        assert_eq!(Stats::from_str("ERROR").unwrap(), Stats::Error);
+        assert_eq!(Stats::from_str("All").unwrap(), Stats::All);
+        assert!(Stats::from_str("invalid").is_err());
+    }
+
+    #[test]
+    fn test_stats_display() {
+        assert_eq!(format!("{}", Stats::Success), "Success");
+        assert_eq!(format!("{}", Stats::Error), "Error");
+        assert_eq!(format!("{}", Stats::All), "All");
+    }
+
+    #[test]
+    fn test_unit_from_str() {
+        assert_eq!(Unit::from_str("seconds").unwrap(), Unit::Seconds);
+        assert_eq!(Unit::from_str("MILLISECONDS").unwrap(), Unit::Milliseconds);
+        assert!(Unit::from_str("invalid").is_err());
+    }
+
+    #[test]
+    fn test_load_test_result_new() {
+        let res = LoadTestResult::new();
+        assert_eq!(res.success, 0);
+        assert_eq!(res.failures, 0);
+        assert_eq!(res.completed, 0);
+    }
+
+    #[test]
+    fn test_load_test_result_update_percentiles() {
+        let mut res = LoadTestResult::new();
+        res.durations.record(100).unwrap();
+        res.durations.record(200).unwrap();
+        res.durations.record(300).unwrap();
+        res.total_duration = Duration::from_micros(600);
+
+        res.update_percentiles();
+
+        assert_eq!(res.avg, Duration::from_micros(200));
+        assert!(res.p50 >= Duration::from_micros(200));
+        assert!(res.p90 >= Duration::from_micros(300));
+    }
+}
+
 /// Specifies the order in which to process request body files from a directory.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Order {

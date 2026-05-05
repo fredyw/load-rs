@@ -363,3 +363,29 @@ async fn main() -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_header_map() {
+        let headers = vec![
+            "Content-Type: application/json".to_string(),
+            "X-Custom: value".to_string(),
+        ];
+        let map = to_header_map(&headers).unwrap();
+        assert_eq!(map.get("Content-Type").unwrap(), "application/json");
+        assert_eq!(map.get("X-Custom").unwrap(), "value");
+
+        let invalid = vec!["InvalidHeader".to_string()];
+        assert!(to_header_map(&invalid).is_err());
+    }
+
+    #[test]
+    fn test_format_duration() {
+        let d = std::time::Duration::from_millis(1500);
+        assert_eq!(format_duration(d, Unit::Seconds), "1.50s");
+        assert_eq!(format_duration(d, Unit::Milliseconds), "1500.00ms");
+    }
+}

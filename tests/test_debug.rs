@@ -336,3 +336,27 @@ async fn debug_from_manifest_random() {
 
     assert_eq!(response.status(), 200);
 }
+
+#[tokio::test]
+async fn test_user_agent() {
+    let runner = LoadTestRunner::new(
+        "https://mockhttp.org/get",
+        1,
+        1,
+        Stats::All,
+        None,
+        None,
+        None,
+        false,
+        None,
+        Some("custom-agent/1.0"),
+        None,
+    )
+    .await
+    .unwrap();
+
+    let resp = runner.debug(HttpMethod::Get, None, None).await.unwrap();
+
+    let body = resp.text().await.unwrap();
+    assert!(body.contains("\"user-agent\":\"custom-agent/1.0\""));
+}

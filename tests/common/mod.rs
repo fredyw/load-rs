@@ -211,3 +211,19 @@ pub async fn run_perf_server() -> Result<PerformanceTestServer> {
         shutdown_tx: Some(shutdown_tx),
     })
 }
+
+pub fn assert_result(
+    result: &load_rs::LoadTestResult,
+    expected_completed: u32,
+    expected_success: u32,
+) {
+    assert_eq!(result.completed, expected_completed);
+    assert_eq!(result.success, expected_success);
+    assert_eq!(result.failures, expected_completed - expected_success);
+    if expected_success > 0 {
+        assert!(result.p50 >= Default::default());
+        assert!(result.p90 >= Default::default());
+        assert!(result.p95 >= Default::default());
+        assert!(result.avg >= Default::default());
+    }
+}
