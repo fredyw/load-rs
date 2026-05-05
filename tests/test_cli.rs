@@ -622,3 +622,28 @@ fn run_duration_based() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn run_rate_limited() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args([
+        "-n",
+        "10",
+        "-c",
+        "2",
+        "-r",
+        "5",
+        "-X",
+        "GET",
+        "https://mockhttp.org/get",
+    ]);
+
+    let now = std::time::Instant::now();
+    cmd.assert().success();
+    let elapsed = now.elapsed();
+
+    // 10 requests at 5 RPS should take at least 2 seconds
+    assert!(elapsed >= std::time::Duration::from_secs(2));
+
+    Ok(())
+}

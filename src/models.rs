@@ -356,6 +356,8 @@ pub struct LoadTestConfig {
     pub disable_keepalive: bool,
     /// Maximum duration of the load test.
     pub duration: Option<Duration>,
+    /// Requests per second limit.
+    pub rps: Option<u32>,
 }
 
 /// Events emitted during the load test.

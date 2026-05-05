@@ -40,6 +40,8 @@ pub struct LoadTestRunner {
     pub save_mode: crate::models::SaveMode,
     /// Duration limit for the load test.
     pub duration: Option<Duration>,
+    /// Requests per second limit.
+    pub rps: Option<u32>,
     /// HTTP client.
     client: Client,
 }
@@ -69,6 +71,7 @@ impl LoadTestRunnerBuilder {
                 save_mode: crate::models::SaveMode::All,
                 disable_keepalive: false,
                 duration: None,
+                rps: None,
             },
         }
     }
@@ -142,6 +145,12 @@ impl LoadTestRunnerBuilder {
     /// Sets the maximum duration of the load test.
     pub fn duration(mut self, duration: Duration) -> Self {
         self.config.duration = Some(duration);
+        self
+    }
+
+    /// Sets the requests per second limit.
+    pub fn rps(mut self, rps: u32) -> Self {
+        self.config.rps = Some(rps);
         self
     }
 
@@ -254,6 +263,7 @@ impl LoadTestRunner {
             quiet: config.quiet,
             save_mode: config.save_mode,
             duration: config.duration,
+            rps: config.rps,
             client: builder.build()?,
         })
     }
@@ -308,13 +318,34 @@ impl LoadTestRunner {
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
         let start_time = Instant::now();
+
+        let semaphore = if let Some(rps) = self.rps {
+            let sem = Arc::new(tokio::sync::Semaphore::new(0));
+            let s = Arc::clone(&sem);
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(Duration::from_secs_f64(1.0 / rps as f64));
+                loop {
+                    interval.tick().await;
+                    s.add_permits(1);
+                }
+            });
+            Some(sem)
+        } else {
+            None
+        };
+
         for _ in 0..self.concurrency {
             let tx = tx.clone();
             let runner = Arc::clone(&runner);
             let counter = Arc::clone(&counter);
             let generator = Arc::clone(&generator);
+            let semaphore = semaphore.clone();
             tokio::spawn(async move {
                 loop {
+                    if let Some(sem) = &semaphore {
+                        let permit = sem.acquire().await.unwrap();
+                        permit.forget();
+                    }
                     let i = counter.fetch_add(1, Ordering::Relaxed);
                     if i >= runner.requests as u64 {
                         break;

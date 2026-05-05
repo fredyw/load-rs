@@ -45,6 +45,7 @@ Options:
   -n, --requests <REQUESTS>            Total number of requests to send
   -z, --duration <DURATION>            Maximum duration of the load test (e.g., 10s, 1m)
   -c, --concurrency <CONCURRENCY>      Number of concurrent requests to run at a time
+  -r, --rate <RATE>                    Requests per second (RPS) limit
   -X, --method <METHOD>                HTTP method to use for the requests [default: get]
   -H, --header <HEADER>                Custom HTTP header(s) in "key: value" format. Can be repeated
   -d, --data <DATA>                    Request body as a string
@@ -147,6 +148,10 @@ values are supported:
 The `-z` or `--duration` flag allows you to run the load test for a specific amount of time instead of a fixed number of requests. You can specify the duration in seconds (e.g., `30`, `30s`), minutes (e.g., `5m`), or hours (e.g., `1h`).
 
 If both `--requests` and `--duration` are provided, the test will stop whichever limit is reached first.
+
+#### Rate Limiting
+
+The `-r` or `--rate` flag allows you to limit the number of requests per second (RPS). This is useful for simulating steady traffic or avoiding overwhelming the target server.
 
 #### Timeout
 

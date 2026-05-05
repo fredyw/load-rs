@@ -16,7 +16,7 @@ struct Args {
     url: String,
 
     /// Total number of requests to send.
-    #[arg(short = 'n', long, required_unless_present = "duration")]
+    #[arg(short = 'n', long, required_unless_present_any = ["duration", "debug"])]
     requests: Option<u32>,
 
     /// Maximum duration of the load test (e.g., 10s, 1m).
@@ -26,6 +26,10 @@ struct Args {
     /// Number of concurrent requests to run at a time.
     #[arg(short = 'c', long, default_value = "10")]
     concurrency: u32,
+
+    /// Requests per second (RPS) limit.
+    #[arg(short = 'r', long)]
+    rate: Option<u32>,
 
     /// HTTP method to use for the requests.
     #[arg(short = 'X', long, default_value = "get")]
@@ -441,6 +445,9 @@ async fn main() -> Result<()> {
     }
     if let Some(duration_str) = &args.duration {
         builder = builder.duration(parse_duration(duration_str)?);
+    }
+    if let Some(rps) = args.rate {
+        builder = builder.rps(rps);
     }
 
     let runner = builder.build().await?;
