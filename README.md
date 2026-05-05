@@ -202,6 +202,9 @@ To run the tests, you can use the following command.
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue.
 
+If you are an AI agent, please refer to [AGENTS.md](AGENTS.md) for specific guidelines.
+
+
 ### License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.

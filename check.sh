@@ -3,4 +3,4 @@
 set -ueo pipefail
 
 cargo fmt -- --check
-cargo clippy -- -D warnings
+cargo clippy --all-targets --all-features -- -D warnings

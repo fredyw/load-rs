@@ -3,5 +3,5 @@
 set -ueo pipefail
 
 cargo fmt
-cargo fix --allow-dirty
-cargo clippy --fix --allow-dirty
+cargo fix --allow-dirty --all-targets --all-features
+cargo clippy --fix --allow-dirty --all-targets --all-features
