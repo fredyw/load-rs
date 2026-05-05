@@ -152,7 +152,8 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
             "  Max: {}\n",
             "  P50: {}\n",
             "  P90: {}\n",
-            "  P95: {}",
+            "  P95: {}\n",
+            "  P99: {}",
         ),
         style(&args.url).cyan().underlined(),
         style(args.concurrency).yellow(),
@@ -174,6 +175,7 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
         style(format_duration(result.p50, args.unit)).yellow(),
         style(format_duration(result.p90, args.unit)).yellow(),
         style(format_duration(result.p95, args.unit)).yellow(),
+        style(format_duration(result.p99, args.unit)).yellow(),
     )
 }
 

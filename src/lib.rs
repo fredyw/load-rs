@@ -88,9 +88,6 @@ pub struct LoadTestResult {
     /// The 99th percentile response time for successful requests.
     pub p99: Duration,
 
-    /// The 99.9th percentile response time for successful requests.
-    pub p99_9: Duration,
-
     /// Total time elapsed for the load test.
     pub elapsed: Duration,
 
@@ -203,7 +200,6 @@ impl LoadTestResult {
             p90: Duration::default(),
             p95: Duration::default(),
             p99: Duration::default(),
-            p99_9: Duration::default(),
             elapsed: Duration::default(),
             rps: 0.0,
             success_rate: 0.0,
@@ -217,7 +213,6 @@ impl LoadTestResult {
             self.p90 = Duration::from_micros(self.durations.value_at_percentile(90.0));
             self.p95 = Duration::from_micros(self.durations.value_at_percentile(95.0));
             self.p99 = Duration::from_micros(self.durations.value_at_percentile(99.0));
-            self.p99_9 = Duration::from_micros(self.durations.value_at_percentile(99.9));
             self.avg = self.total_duration / self.durations.len() as u32;
         }
     }
