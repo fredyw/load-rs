@@ -284,6 +284,33 @@ pub struct RequestResult {
     pub error: Option<String>,
 }
 
+/// Configuration for a load test run.
+#[derive(Debug, Clone)]
+pub struct LoadTestConfig {
+    /// Target URL to send requests to.
+    pub url: String,
+    /// Total number of requests to send.
+    pub requests: u32,
+    /// Number of concurrent requests to run at a time.
+    pub concurrency: u32,
+    /// Specifies which requests to include in the statistics.
+    pub stats: Stats,
+    /// Custom CA certificate file (PEM format).
+    pub ca_cert: Option<PathBuf>,
+    /// Public certificate file (PEM format).
+    pub cert: Option<PathBuf>,
+    /// Private key file (PEM format).
+    pub key: Option<PathBuf>,
+    /// Allows insecure connections by skipping TLS certificate verification.
+    pub insecure: bool,
+    /// Request timeout in seconds.
+    pub timeout: Option<u64>,
+    /// Custom user agent.
+    pub user_agent: Option<String>,
+    /// Proxy server URL.
+    pub proxy: Option<String>,
+}
+
 /// Events emitted during the load test.
 pub enum LoadTestEvent<'a> {
     /// Emitted when an individual request finishes.

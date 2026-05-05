@@ -39,6 +39,85 @@ pub struct LoadTestRunner {
     client: Client,
 }
 
+/// A builder for creating a `LoadTestRunner`.
+pub struct LoadTestRunnerBuilder {
+    config: crate::models::LoadTestConfig,
+}
+
+impl LoadTestRunnerBuilder {
+    /// Creates a new `LoadTestRunnerBuilder` with the specified mandatory parameters.
+    pub fn new(url: impl Into<String>, requests: u32, concurrency: u32) -> Self {
+        Self {
+            config: crate::models::LoadTestConfig {
+                url: url.into(),
+                requests,
+                concurrency,
+                stats: Stats::Success,
+                ca_cert: None,
+                cert: None,
+                key: None,
+                insecure: false,
+                timeout: None,
+                user_agent: None,
+                proxy: None,
+            },
+        }
+    }
+
+    /// Sets which requests to include in the statistics.
+    pub fn stats(mut self, stats: Stats) -> Self {
+        self.config.stats = stats;
+        self
+    }
+
+    /// Sets a custom CA certificate file (PEM format).
+    pub fn ca_cert(mut self, ca_cert: impl Into<PathBuf>) -> Self {
+        self.config.ca_cert = Some(ca_cert.into());
+        self
+    }
+
+    /// Sets a public certificate file (PEM format).
+    pub fn cert(mut self, cert: impl Into<PathBuf>) -> Self {
+        self.config.cert = Some(cert.into());
+        self
+    }
+
+    /// Sets a private key file (PEM format).
+    pub fn key(mut self, key: impl Into<PathBuf>) -> Self {
+        self.config.key = Some(key.into());
+        self
+    }
+
+    /// Sets whether to allow insecure connections by skipping TLS certificate verification.
+    pub fn insecure(mut self, insecure: bool) -> Self {
+        self.config.insecure = insecure;
+        self
+    }
+
+    /// Sets a request timeout in seconds.
+    pub fn timeout(mut self, timeout: u64) -> Self {
+        self.config.timeout = Some(timeout);
+        self
+    }
+
+    /// Sets a custom user agent.
+    pub fn user_agent(mut self, user_agent: impl Into<String>) -> Self {
+        self.config.user_agent = Some(user_agent.into());
+        self
+    }
+
+    /// Sets a proxy server URL.
+    pub fn proxy(mut self, proxy: impl Into<String>) -> Self {
+        self.config.proxy = Some(proxy.into());
+        self
+    }
+
+    /// Builds the `LoadTestRunner`.
+    pub async fn build(self) -> Result<LoadTestRunner> {
+        LoadTestRunner::new(self.config).await
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct RequestTemplate {
     #[serde(default)]
@@ -64,67 +143,55 @@ enum WorkerResult {
 }
 
 impl LoadTestRunner {
+    /// Creates a new `LoadTestRunnerBuilder` with the specified mandatory parameters.
+    pub fn builder(
+        url: impl Into<String>,
+        requests: u32,
+        concurrency: u32,
+    ) -> LoadTestRunnerBuilder {
+        LoadTestRunnerBuilder::new(url, requests, concurrency)
+    }
+
     /// Creates a new `LoadTestRunner` with the specified configuration.
     ///
     /// # Parameters
     ///
-    /// * `url`: Target URL to send requests to.
-    /// * `requests`: Total number of requests to send.
-    /// * `concurrency`: Number of concurrent requests to run at a time.
-    /// * `stats`: Specifies which requests to include in the statistics.
-    /// * `ca_cert`: Custom CA certificate file (PEM format).
-    /// * `cert`: Public certificate file (PEM format).
-    /// * `key`: Private key file (PEM format).
-    /// * `insecure`: Allows insecure connections by skipping TLS certificate verification.
-    /// * `timeout`: Request timeout in seconds.
-    /// * `user_agent`: Custom user agent.
-    /// * `proxy`: Proxy server URL.
+    /// * `config`: Configuration for the load test run.
     ///
     /// # Returns
     /// A `Result` containing the new `LoadTestRunner` instance if successful.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn new(
-        url: &str,
-        requests: u32,
-        concurrency: u32,
-        stats: Stats,
-        ca_cert: Option<&Path>,
-        cert: Option<&Path>,
-        key: Option<&Path>,
-        insecure: bool,
-        timeout: Option<u64>,
-        user_agent: Option<&str>,
-        proxy: Option<&str>,
-    ) -> Result<Self> {
-        if url.is_empty() {
+    pub async fn new(config: crate::models::LoadTestConfig) -> Result<Self> {
+        if config.url.is_empty() {
             bail!("URL cannot be empty");
         }
-        if requests == 0 {
+        if config.requests == 0 {
             bail!("Number of requests cannot be zero");
         }
-        if concurrency == 0 {
+        if config.concurrency == 0 {
             bail!("Number of concurrency cannot be zero");
         }
-        if concurrency > requests {
+        if config.concurrency > config.requests {
             bail!(
-                "Number of concurrency: {concurrency} must be less than or equal to number of requests: {requests}"
+                "Number of concurrency: {} must be less than or equal to number of requests: {}",
+                config.concurrency,
+                config.requests
             );
         }
         let mut builder = Client::builder()
             .use_rustls_tls()
-            .danger_accept_invalid_certs(insecure)
+            .danger_accept_invalid_certs(config.insecure)
             .tcp_nodelay(true)
-            .pool_max_idle_per_host(concurrency as usize);
-        if let Some(t) = timeout {
+            .pool_max_idle_per_host(config.concurrency as usize);
+        if let Some(t) = config.timeout {
             builder = builder.timeout(Duration::from_secs(t));
         }
-        if let Some(ua) = user_agent {
+        if let Some(ua) = config.user_agent {
             builder = builder.user_agent(ua);
         }
-        if let Some(p) = proxy {
+        if let Some(p) = config.proxy {
             builder = builder.proxy(reqwest::Proxy::all(p)?);
         }
-        if let Some(ca_cert_path) = ca_cert {
+        if let Some(ca_cert_path) = config.ca_cert {
             if !ca_cert_path.is_file() {
                 bail!(
                     "CA certificate '{}' does not exist or is not a file",
@@ -135,14 +202,14 @@ impl LoadTestRunner {
             let ca_cert_bytes = Certificate::from_pem(&bytes)?;
             builder = builder.add_root_certificate(ca_cert_bytes);
         }
-        if let (Some(cert_path), Some(key_path)) = (cert, key) {
-            builder = builder.identity(Self::create_identity(cert_path, key_path).await?);
+        if let (Some(cert_path), Some(key_path)) = (config.cert, config.key) {
+            builder = builder.identity(Self::create_identity(&cert_path, &key_path).await?);
         }
         Ok(LoadTestRunner {
-            url: url.to_owned(),
-            requests,
-            concurrency,
-            stats,
+            url: config.url,
+            requests: config.requests,
+            concurrency: config.concurrency,
+            stats: config.stats,
             client: builder.build()?,
         })
     }
@@ -900,21 +967,11 @@ mod tests {
 
     #[tokio::test]
     async fn new_succeeds() {
-        let result = LoadTestRunner::new(
-            "http://localhost:8080",
-            10,
-            2,
-            Stats::Success,
-            None,
-            None,
-            None,
-            false,
-            None,
-            None,
-            None,
-        )
-        .await
-        .unwrap();
+        let result = LoadTestRunner::builder("http://localhost:8080", 10, 2)
+            .stats(Stats::Success)
+            .build()
+            .await
+            .unwrap();
 
         assert_eq!(result.url, "http://localhost:8080");
         assert_eq!(result.requests, 10);
@@ -923,21 +980,13 @@ mod tests {
 
     #[tokio::test]
     async fn new_success() {
-        let runner = LoadTestRunner::new(
-            "http://localhost:8080",
-            10,
-            2,
-            Stats::Success,
-            None,
-            None,
-            None,
-            false,
-            Some(30),
-            Some("test-agent"),
-            None,
-        )
-        .await
-        .unwrap();
+        let runner = LoadTestRunner::builder("http://localhost:8080", 10, 2)
+            .stats(Stats::Success)
+            .timeout(30)
+            .user_agent("test-agent")
+            .build()
+            .await
+            .unwrap();
 
         assert_eq!(runner.url, "http://localhost:8080");
         assert_eq!(runner.requests, 10);
@@ -947,84 +996,44 @@ mod tests {
 
     #[tokio::test]
     async fn new_url_is_empty_fails() {
-        let result = LoadTestRunner::new(
-            "",
-            2,
-            2,
-            Stats::Success,
-            None,
-            None,
-            None,
-            false,
-            None,
-            None,
-            None,
-        )
-        .await
-        .unwrap_err();
+        let result = LoadTestRunner::builder("", 2, 2)
+            .stats(Stats::Success)
+            .build()
+            .await
+            .unwrap_err();
 
         assert_eq!(result.to_string(), "URL cannot be empty");
     }
 
     #[tokio::test]
     async fn new_num_requests_is_zero_fails() {
-        let result = LoadTestRunner::new(
-            "http://localhost:8080",
-            0,
-            2,
-            Stats::Success,
-            None,
-            None,
-            None,
-            false,
-            None,
-            None,
-            None,
-        )
-        .await
-        .unwrap_err();
+        let result = LoadTestRunner::builder("http://localhost:8080", 0, 2)
+            .stats(Stats::Success)
+            .build()
+            .await
+            .unwrap_err();
 
         assert_eq!(result.to_string(), "Number of requests cannot be zero");
     }
 
     #[tokio::test]
     async fn new_num_concurrency_is_zero_fails() {
-        let result = LoadTestRunner::new(
-            "http://localhost:8080",
-            2,
-            0,
-            Stats::Success,
-            None,
-            None,
-            None,
-            false,
-            None,
-            None,
-            None,
-        )
-        .await
-        .unwrap_err();
+        let result = LoadTestRunner::builder("http://localhost:8080", 2, 0)
+            .stats(Stats::Success)
+            .build()
+            .await
+            .unwrap_err();
 
         assert_eq!(result.to_string(), "Number of concurrency cannot be zero");
     }
 
     #[tokio::test]
     async fn new_num_concurrency_greater_than_num_requests_fails() {
-        let result = LoadTestRunner::new(
-            "http://localhost:8080",
-            2,
-            3,
-            Stats::Success,
-            None,
-            None,
-            None,
-            false,
-            None,
-            None,
-            None,
-        )
-        .await
-        .unwrap_err();
+        let result = LoadTestRunner::builder("http://localhost:8080", 2, 3)
+            .stats(Stats::Success)
+            .build()
+            .await
+            .unwrap_err();
 
         assert_eq!(
             result.to_string(),
@@ -1034,21 +1043,12 @@ mod tests {
 
     #[tokio::test]
     async fn new_ca_cert_does_not_exist_fails() {
-        let result = LoadTestRunner::new(
-            "http://localhost:8080",
-            10,
-            2,
-            Stats::Success,
-            Some(Path::new("doesnotexist")),
-            None,
-            None,
-            false,
-            None,
-            None,
-            None,
-        )
-        .await
-        .unwrap_err();
+        let result = LoadTestRunner::builder("http://localhost:8080", 10, 2)
+            .stats(Stats::Success)
+            .ca_cert("doesnotexist")
+            .build()
+            .await
+            .unwrap_err();
 
         assert_eq!(
             result.to_string(),
@@ -1058,21 +1058,13 @@ mod tests {
 
     #[tokio::test]
     async fn new_cert_does_not_exist_fails() {
-        let result = LoadTestRunner::new(
-            "http://localhost:8080",
-            10,
-            2,
-            Stats::Success,
-            None,
-            Some(Path::new("doesnotexist")),
-            Some(Path::new("tests/tls/key.pem")),
-            false,
-            None,
-            None,
-            None,
-        )
-        .await
-        .unwrap_err();
+        let result = LoadTestRunner::builder("http://localhost:8080", 10, 2)
+            .stats(Stats::Success)
+            .cert("doesnotexist")
+            .key("tests/tls/key.pem")
+            .build()
+            .await
+            .unwrap_err();
 
         assert_eq!(
             result.to_string(),
@@ -1082,21 +1074,13 @@ mod tests {
 
     #[tokio::test]
     async fn new_key_does_not_exist_fails() {
-        let result = LoadTestRunner::new(
-            "http://localhost:8080",
-            10,
-            2,
-            Stats::Success,
-            None,
-            Some(Path::new("tests/tls/client.crt")),
-            Some(Path::new("doesnotexist")),
-            false,
-            None,
-            None,
-            None,
-        )
-        .await
-        .unwrap_err();
+        let result = LoadTestRunner::builder("http://localhost:8080", 10, 2)
+            .stats(Stats::Success)
+            .cert("tests/tls/client.crt")
+            .key("doesnotexist")
+            .build()
+            .await
+            .unwrap_err();
 
         assert_eq!(
             result.to_string(),

@@ -11,21 +11,11 @@ async fn test_ui_debouncing() {
     let url = format!("http://{}", server.addr);
     let requests = 20;
     let concurrency = 5;
-    let runner = LoadTestRunner::new(
-        &url,
-        requests,
-        concurrency,
-        Stats::All,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder(&url, requests, concurrency)
+        .stats(Stats::All)
+        .build()
+        .await
+        .unwrap();
     let callback_count = Arc::new(AtomicU32::new(0));
     let cb = Arc::clone(&callback_count);
     let result = runner

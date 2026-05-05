@@ -342,20 +342,30 @@ async fn debug(runner: &LoadTestRunner, args: &Args) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let runner = LoadTestRunner::new(
-        &args.url,
-        args.requests,
-        args.concurrency,
-        args.stats,
-        args.ca_cert.as_deref(),
-        args.cert.as_deref(),
-        args.key.as_deref(),
-        args.insecure,
-        args.timeout,
-        args.user_agent.as_deref(),
-        args.proxy.as_deref(),
-    )
-    .await?;
+    let mut builder = LoadTestRunner::builder(&args.url, args.requests, args.concurrency)
+        .stats(args.stats)
+        .insecure(args.insecure);
+
+    if let Some(ca_cert) = &args.ca_cert {
+        builder = builder.ca_cert(ca_cert);
+    }
+    if let Some(cert) = &args.cert {
+        builder = builder.cert(cert);
+    }
+    if let Some(key) = &args.key {
+        builder = builder.key(key);
+    }
+    if let Some(timeout) = args.timeout {
+        builder = builder.timeout(timeout);
+    }
+    if let Some(user_agent) = &args.user_agent {
+        builder = builder.user_agent(user_agent);
+    }
+    if let Some(proxy) = &args.proxy {
+        builder = builder.proxy(proxy);
+    }
+
+    let runner = builder.build().await?;
     if args.debug {
         debug(&runner, &args).await?;
     } else {

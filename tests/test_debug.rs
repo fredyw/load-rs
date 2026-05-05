@@ -7,21 +7,11 @@ mod common;
 
 #[tokio::test]
 async fn debug_get() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/get",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/get", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let response = runner.debug(HttpMethod::Get, None, None).await.unwrap();
 
@@ -30,21 +20,11 @@ async fn debug_get() {
 
 #[tokio::test]
 async fn debug_head() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/get",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/get", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let response = runner.debug(HttpMethod::Head, None, None).await.unwrap();
 
@@ -53,21 +33,11 @@ async fn debug_head() {
 
 #[tokio::test]
 async fn debug_post() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -85,21 +55,11 @@ async fn debug_post() {
 
 #[tokio::test]
 async fn debug_put() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/put",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/put", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -117,21 +77,11 @@ async fn debug_put() {
 
 #[tokio::test]
 async fn debug_patch() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/patch",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/patch", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -149,21 +99,11 @@ async fn debug_patch() {
 
 #[tokio::test]
 async fn debug_delete() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/delete",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/delete", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -181,21 +121,11 @@ async fn debug_delete() {
 
 #[tokio::test]
 async fn debug_from_data_file() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -213,21 +143,11 @@ async fn debug_from_data_file() {
 
 #[tokio::test]
 async fn debug_from_dir_sequential() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -246,21 +166,11 @@ async fn debug_from_dir_sequential() {
 
 #[tokio::test]
 async fn debug_from_dir_random() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -279,21 +189,11 @@ async fn debug_from_dir_random() {
 
 #[tokio::test]
 async fn debug_from_manifest_sequential() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let response = runner
         .debug_from_manifest(
@@ -309,21 +209,11 @@ async fn debug_from_manifest_sequential() {
 
 #[tokio::test]
 async fn debug_from_manifest_random() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let response = runner
         .debug_from_manifest(
@@ -339,21 +229,12 @@ async fn debug_from_manifest_random() {
 
 #[tokio::test]
 async fn test_user_agent() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/get",
-        1,
-        1,
-        Stats::All,
-        None,
-        None,
-        None,
-        false,
-        None,
-        Some("custom-agent/1.0"),
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/get", 1, 1)
+        .stats(Stats::All)
+        .user_agent("custom-agent/1.0")
+        .build()
+        .await
+        .unwrap();
 
     let resp = runner.debug(HttpMethod::Get, None, None).await.unwrap();
 

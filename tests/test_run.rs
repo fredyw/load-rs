@@ -8,21 +8,11 @@ use common::*;
 
 #[tokio::test]
 async fn run_get() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/get",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/get", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run(HttpMethod::Get, None, None, None, |_| {})
@@ -34,21 +24,11 @@ async fn run_get() {
 
 #[tokio::test]
 async fn run_head() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/get",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/get", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run(HttpMethod::Head, None, None, None, |_| {})
@@ -60,21 +40,11 @@ async fn run_head() {
 
 #[tokio::test]
 async fn run_post() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -94,21 +64,11 @@ async fn run_post() {
 
 #[tokio::test]
 async fn run_put() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/put",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/put", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -128,21 +88,11 @@ async fn run_put() {
 
 #[tokio::test]
 async fn run_patch() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/patch",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/patch", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -162,21 +112,11 @@ async fn run_patch() {
 
 #[tokio::test]
 async fn run_delete() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/delete",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/delete", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -196,21 +136,11 @@ async fn run_delete() {
 
 #[tokio::test]
 async fn run_from_dir_sequential() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -231,21 +161,11 @@ async fn run_from_dir_sequential() {
 
 #[tokio::test]
 async fn run_from_data_file() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -265,21 +185,11 @@ async fn run_from_data_file() {
 
 #[tokio::test]
 async fn run_from_dir_random() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -300,21 +210,11 @@ async fn run_from_dir_random() {
 
 #[tokio::test]
 async fn run_from_dir_requests_less_than_files_sequential() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -341,21 +241,11 @@ async fn run_from_dir_requests_less_than_files_sequential() {
 
 #[tokio::test]
 async fn run_from_dir_requests_greater_than_files_sequential() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        7,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 7, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -382,21 +272,11 @@ async fn run_from_dir_requests_greater_than_files_sequential() {
 
 #[tokio::test]
 async fn run_from_dir_requests_less_than_files_random() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -423,21 +303,11 @@ async fn run_from_dir_requests_less_than_files_random() {
 
 #[tokio::test]
 async fn run_from_dir_requests_greater_than_files_random() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        7,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 7, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -464,21 +334,11 @@ async fn run_from_dir_requests_greater_than_files_random() {
 
 #[tokio::test]
 async fn run_from_manifest_random() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_from_manifest(
@@ -496,21 +356,11 @@ async fn run_from_manifest_random() {
 
 #[tokio::test]
 async fn run_from_manifest_requests_less_than_files_sequential() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_from_manifest(
@@ -534,21 +384,11 @@ async fn run_from_manifest_requests_less_than_files_sequential() {
 
 #[tokio::test]
 async fn run_from_manifest_requests_greater_than_files_sequential() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        7,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 7, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_from_manifest(
@@ -572,21 +412,11 @@ async fn run_from_manifest_requests_greater_than_files_sequential() {
 
 #[tokio::test]
 async fn run_from_manifest_requests_less_than_files_random() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_from_manifest(
@@ -610,21 +440,11 @@ async fn run_from_manifest_requests_less_than_files_random() {
 
 #[tokio::test]
 async fn run_from_manifest_requests_greater_than_files_random() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        7,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 7, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_from_manifest(
@@ -642,21 +462,12 @@ async fn run_from_manifest_requests_greater_than_files_random() {
 
 #[tokio::test]
 async fn run_with_timeout() {
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/delay/2",
-        1,
-        1,
-        Stats::All,
-        None,
-        None,
-        None,
-        false,
-        Some(1),
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/delay/2", 1, 1)
+        .stats(Stats::All)
+        .timeout(1)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run(HttpMethod::Get, None, None, None, |_| {})
@@ -673,21 +484,11 @@ async fn test_run_with_generator() {
     let server = run_perf_server().await.unwrap();
     let url = format!("http://{}", server.addr);
 
-    let runner = LoadTestRunner::new(
-        &url,
-        5,
-        2,
-        Stats::All,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder(&url, 5, 2)
+        .stats(Stats::All)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_with_generator(
@@ -709,21 +510,11 @@ async fn test_run_with_generator() {
 
 #[tokio::test]
 async fn run_from_empty_dir_fails() {
-    let runner = LoadTestRunner::new(
-        "http://localhost:8080",
-        5,
-        2,
-        Stats::All,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("http://localhost:8080", 5, 2)
+        .stats(Stats::All)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_from_dir(

@@ -14,21 +14,11 @@ async fn run_success_save_responses() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
 
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -57,21 +47,11 @@ async fn run_failure_save_responses() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
 
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/get",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/get", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -100,21 +80,11 @@ async fn run_from_dir_success_save_responses() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
 
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -144,21 +114,11 @@ async fn run_from_dir_failure_save_responses() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
 
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/get",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/get", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -188,21 +148,11 @@ async fn run_from_manifest_success_save_responses() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
 
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_from_manifest(
@@ -229,21 +179,11 @@ async fn run_from_manifest_failure_save_responses() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
 
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/get",
-        3,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/get", 3, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let result = runner
         .run_from_manifest(

@@ -231,20 +231,12 @@ async fn main() -> anyhow::Result<()> {
     let requests = 100;
     let concurrency = 10;
 
-    // Initialize the runner
-    let runner = LoadTestRunner::new(
-        url,
-        requests,
-        concurrency,
-        Stats::Success,
-        None, // ca_cert
-        None, // cert
-        None, // key
-        false, // insecure
-        Some(30), // timeout (seconds)
-        None, // user_agent
-        None, // proxy
-    ).await?;
+    // Initialize the runner using the builder pattern
+    let runner = LoadTestRunner::builder(url, requests, concurrency)
+        .stats(Stats::Success)
+        .timeout(30)
+        .build()
+        .await?;
 
     // Run the test
     let result = runner.run(
@@ -286,13 +278,10 @@ use reqwest::{Client, Method};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let runner = LoadTestRunner::new(
-        "http://localhost:8080",
-        1000,
-        50,
-        Stats::Success,
-        None, None, None, false, None, None, None
-    ).await?;
+    let runner = LoadTestRunner::builder("http://localhost:8080", 1000, 50)
+        .stats(Stats::Success)
+        .build()
+        .await?;
 
     // You can share a client or any other state in the generator
     let client = Client::new();

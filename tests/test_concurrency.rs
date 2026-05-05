@@ -10,21 +10,11 @@ async fn test_concurrency_limit() {
     let url = format!("http://{}", server.addr);
     let concurrency = 3;
     let requests = 10;
-    let runner = LoadTestRunner::new(
-        &url,
-        requests,
-        concurrency,
-        Stats::All,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder(&url, requests, concurrency)
+        .stats(Stats::All)
+        .build()
+        .await
+        .unwrap();
     let result = runner
         .run(HttpMethod::Get, None, None, None, |_| {})
         .await

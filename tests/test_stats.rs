@@ -7,21 +7,11 @@ mod common;
 #[tokio::test]
 async fn run_success_stats() {
     // Successful requests with `Stats::Success`.
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -45,21 +35,11 @@ async fn run_success_stats() {
     assert!(result.avg > Default::default());
 
     // Failed requests with `Stats::Success`.
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Success,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Success)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -86,21 +66,11 @@ async fn run_success_stats() {
 #[tokio::test]
 async fn run_failure_stats() {
     // Successful requests with `Stats::Error`.
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Error,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Error)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -124,21 +94,11 @@ async fn run_failure_stats() {
     assert_eq!(result.avg, Default::default());
 
     // Failed requests with `Stats::Error`.
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::Error,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::Error)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -165,21 +125,11 @@ async fn run_failure_stats() {
 #[tokio::test]
 async fn run_all_stats() {
     // Successful requests with `Stats::All`.
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::All,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::All)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -203,21 +153,11 @@ async fn run_all_stats() {
     assert!(result.avg > Default::default());
 
     // Failed requests with `Stats::Success`.
-    let runner = LoadTestRunner::new(
-        "https://mockhttp.org/post",
-        5,
-        2,
-        Stats::All,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let runner = LoadTestRunner::builder("https://mockhttp.org/post", 5, 2)
+        .stats(Stats::All)
+        .build()
+        .await
+        .unwrap();
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
