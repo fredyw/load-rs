@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -ueo pipefail
+export MSYS_NO_PATHCONV=1
 
 #==============================================================================
 # Generate CA

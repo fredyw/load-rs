@@ -1,15 +1,14 @@
 use load_rs::Body::Data;
 use load_rs::{HttpMethod, LoadTestRunner, Order, Stats};
 use reqwest::header::HeaderMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tokio::fs;
 
 mod common;
 
 #[tokio::test]
 async fn run_success_save_responses() {
-    let dir = "/tmp/load-rs/lib1";
-    let output_dir: PathBuf = dir.into();
+    let output_dir = std::env::temp_dir().join("load-rs-lib1");
     if output_dir.exists() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
@@ -34,15 +33,14 @@ async fn run_success_save_responses() {
         .unwrap();
 
     assert_eq!(result.success, 3);
-    assert!(PathBuf::from(format!("{dir}/success-1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-3.json")).exists());
+    assert!(output_dir.join("success-1.json").exists());
+    assert!(output_dir.join("success-2.json").exists());
+    assert!(output_dir.join("success-3.json").exists());
 }
 
 #[tokio::test]
 async fn run_failure_save_responses() {
-    let dir = "/tmp/load-rs/lib2";
-    let output_dir: PathBuf = dir.into();
+    let output_dir = std::env::temp_dir().join("load-rs-lib2");
     if output_dir.exists() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
@@ -67,15 +65,14 @@ async fn run_failure_save_responses() {
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    assert!(PathBuf::from(format!("{dir}/failure-1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/failure-2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/failure-3.json")).exists());
+    assert!(output_dir.join("failure-1.json").exists());
+    assert!(output_dir.join("failure-2.json").exists());
+    assert!(output_dir.join("failure-3.json").exists());
 }
 
 #[tokio::test]
 async fn run_from_dir_success_save_responses() {
-    let dir = "/tmp/load-rs/lib3";
-    let output_dir: PathBuf = dir.into();
+    let output_dir = std::env::temp_dir().join("load-rs-lib3");
     if output_dir.exists() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
@@ -101,15 +98,14 @@ async fn run_from_dir_success_save_responses() {
         .unwrap();
 
     assert_eq!(result.success, 3);
-    assert!(PathBuf::from(format!("{dir}/success-1-test1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-2-test2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-3-test3.json")).exists());
+    assert!(output_dir.join("success-1-test1.json").exists());
+    assert!(output_dir.join("success-2-test2.json").exists());
+    assert!(output_dir.join("success-3-test3.json").exists());
 }
 
 #[tokio::test]
 async fn run_from_dir_failure_save_responses() {
-    let dir = "/tmp/load-rs/lib4";
-    let output_dir: PathBuf = dir.into();
+    let output_dir = std::env::temp_dir().join("load-rs-lib4");
     if output_dir.exists() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
@@ -135,15 +131,14 @@ async fn run_from_dir_failure_save_responses() {
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    assert!(PathBuf::from(format!("{dir}/failure-1-test1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/failure-2-test2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/failure-3-test3.json")).exists());
+    assert!(output_dir.join("failure-1-test1.json").exists());
+    assert!(output_dir.join("failure-2-test2.json").exists());
+    assert!(output_dir.join("failure-3-test3.json").exists());
 }
 
 #[tokio::test]
 async fn run_from_manifest_success_save_responses() {
-    let dir = "/tmp/load-rs/lib5";
-    let output_dir: PathBuf = dir.into();
+    let output_dir = std::env::temp_dir().join("load-rs-lib5");
     if output_dir.exists() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
@@ -166,15 +161,14 @@ async fn run_from_manifest_success_save_responses() {
         .unwrap();
 
     assert_eq!(result.success, 3);
-    assert!(PathBuf::from(format!("{dir}/success-1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-3.json")).exists());
+    assert!(output_dir.join("success-1.json").exists());
+    assert!(output_dir.join("success-2.json").exists());
+    assert!(output_dir.join("success-3.json").exists());
 }
 
 #[tokio::test]
 async fn run_from_manifest_failure_save_responses() {
-    let dir = "/tmp/load-rs/lib6";
-    let output_dir: PathBuf = dir.into();
+    let output_dir = std::env::temp_dir().join("load-rs-lib6");
     if output_dir.exists() {
         fs::remove_dir_all(&output_dir).await.unwrap();
     }
@@ -197,7 +191,7 @@ async fn run_from_manifest_failure_save_responses() {
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    assert!(PathBuf::from(format!("{dir}/failure-1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/failure-2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/failure-3.json")).exists());
+    assert!(output_dir.join("failure-1.json").exists());
+    assert!(output_dir.join("failure-2.json").exists());
+    assert!(output_dir.join("failure-3.json").exists());
 }

@@ -450,8 +450,8 @@ fn debug_data_dir_random() -> Result<()> {
 
 #[test]
 fn run_save_responses() -> Result<()> {
-    let dir = "/tmp/load-rs/cli1";
-    let output_dir: PathBuf = dir.into();
+    let dir = std::env::temp_dir().join("load-rs-cli1");
+    let output_dir: PathBuf = dir.clone();
     if output_dir.exists() {
         std::fs::remove_dir_all(&output_dir).unwrap();
     }
@@ -468,23 +468,23 @@ fn run_save_responses() -> Result<()> {
         "-d",
         "{\"message\":\"Hello, world!\"}",
         "-o",
-        dir,
+        dir.to_str().unwrap(),
         "https://mockhttp.org/post",
     ]);
 
     cmd.assert().success();
 
-    assert!(PathBuf::from(format!("{dir}/success-1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-3.json")).exists());
+    assert!(dir.join("success-1.json").exists());
+    assert!(dir.join("success-2.json").exists());
+    assert!(dir.join("success-3.json").exists());
 
     Ok(())
 }
 
 #[test]
 fn run_data_dir_save_responses() -> Result<()> {
-    let dir = "/tmp/load-rs/cli2";
-    let output_dir: PathBuf = dir.into();
+    let dir = std::env::temp_dir().join("load-rs-cli2");
+    let output_dir: PathBuf = dir.clone();
     if output_dir.exists() {
         std::fs::remove_dir_all(&output_dir).unwrap();
     }
@@ -503,23 +503,23 @@ fn run_data_dir_save_responses() -> Result<()> {
         "-O",
         "sequential",
         "-o",
-        dir,
+        dir.to_str().unwrap(),
         "https://mockhttp.org/post",
     ]);
 
     cmd.assert().success();
 
-    assert!(PathBuf::from(format!("{dir}/success-1-test1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-2-test2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-3-test3.json")).exists());
+    assert!(dir.join("success-1-test1.json").exists());
+    assert!(dir.join("success-2-test2.json").exists());
+    assert!(dir.join("success-3-test3.json").exists());
 
     Ok(())
 }
 
 #[test]
 fn run_manifest_save_responses() -> Result<()> {
-    let dir = "/tmp/load-rs/cli3";
-    let output_dir: PathBuf = dir.into();
+    let dir = std::env::temp_dir().join("load-rs-cli3");
+    let output_dir: PathBuf = dir.clone();
     if output_dir.exists() {
         std::fs::remove_dir_all(&output_dir).unwrap();
     }
@@ -536,15 +536,15 @@ fn run_manifest_save_responses() -> Result<()> {
         "-O",
         "sequential",
         "-o",
-        dir,
+        dir.to_str().unwrap(),
         "https://mockhttp.org/post",
     ]);
 
     cmd.assert().success();
 
-    assert!(PathBuf::from(format!("{dir}/success-1.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-2.json")).exists());
-    assert!(PathBuf::from(format!("{dir}/success-3.json")).exists());
+    assert!(dir.join("success-1.json").exists());
+    assert!(dir.join("success-2.json").exists());
+    assert!(dir.join("success-3.json").exists());
 
     Ok(())
 }
