@@ -2,6 +2,13 @@
 name = "load-rs"
 version = "0.1.0"
 edition = "2024"
+description = "A performance-oriented HTTP load testing library and CLI tool"
+license = "Apache-2.0"
+repository = "https://github.com/fredyw/load-rs"
+homepage = "https://github.com/fredyw/load-rs"
+readme = "README.md"
+keywords = ["loadtest", "http", "performance", "benchmark"]
+categories = ["development-tools::profiling", "network-programming"]
 
 [dependencies]
 anyhow = "1.0.99"
