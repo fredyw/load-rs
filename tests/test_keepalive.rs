@@ -23,7 +23,11 @@ async fn test_keepalive_enabled() {
     // With keep-alive enabled, we should have FEWER connections than requests (ideally equal to concurrency).
     // In practice, it might be more due to how reqwest manages the pool, but it should be < 10.
     let total_conns = test_server.total_connections.load(Ordering::SeqCst);
-    assert!(total_conns < 10, "Expected fewer than 10 connections with keep-alive, got {}", total_conns);
+    assert!(
+        total_conns < 10,
+        "Expected fewer than 10 connections with keep-alive, got {}",
+        total_conns
+    );
 }
 
 #[tokio::test]
@@ -45,5 +49,9 @@ async fn test_keepalive_disabled() {
     assert_eq!(result.success, 10);
     // With keep-alive disabled, we MUST have exactly one connection per request.
     let total_conns = test_server.total_connections.load(Ordering::SeqCst);
-    assert_eq!(total_conns, 10, "Expected exactly 10 connections with keep-alive disabled, got {}", total_conns);
+    assert_eq!(
+        total_conns, 10,
+        "Expected exactly 10 connections with keep-alive disabled, got {}",
+        total_conns
+    );
 }
