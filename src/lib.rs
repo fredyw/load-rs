@@ -363,28 +363,22 @@ impl LoadTestRunner {
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
+        let base_req = self.build_request(method, (*headers).clone(), (*body).clone())?;
+
         for _ in 0..self.concurrency {
             let tx = tx.clone();
-            let headers = Arc::clone(&headers);
-            let body = Arc::clone(&body);
             let runner = Arc::clone(&runner);
             let counter = Arc::clone(&counter);
+            let base_req = base_req.try_clone().unwrap();
+
             tokio::spawn(async move {
                 loop {
                     let i = counter.fetch_add(1, Ordering::Relaxed);
                     if i >= runner.requests as u64 {
                         break;
                     }
-                    let result = runner
-                        .timed_request(
-                            method,
-                            (*headers).clone(),
-                            (*body).clone(),
-                            i,
-                            None,
-                            save_response,
-                        )
-                        .await;
+                    let req = base_req.try_clone().unwrap();
+                    let result = runner.timed_request(req, i, None, save_response).await;
                     if tx.send(result).await.is_err() {
                         break;
                     }
@@ -445,17 +439,23 @@ impl LoadTestRunner {
             ));
         }
         let save_response = output_dir.is_some();
-        let bodies = Arc::new(bodies);
-        let headers = Arc::new(header.unwrap_or_default());
+        let mut reqs = Vec::new();
+        for (body, base_file_name) in bodies.iter() {
+            let req =
+                self.build_request(method, header.clone().unwrap_or_default(), (**body).clone())?;
+            reqs.push((req, base_file_name.clone()));
+        }
+        let reqs = Arc::new(reqs);
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
+
         for _ in 0..self.concurrency {
             let tx = tx.clone();
-            let headers = Arc::clone(&headers);
-            let bodies = Arc::clone(&bodies);
+            let reqs = Arc::clone(&reqs);
             let runner = Arc::clone(&runner);
             let counter = Arc::clone(&counter);
+
             tokio::spawn(async move {
                 loop {
                     let i = counter.fetch_add(1, Ordering::Relaxed);
@@ -463,21 +463,14 @@ impl LoadTestRunner {
                         break;
                     }
                     let index = match order {
-                        Order::Sequential => i as usize % bodies.len(),
-                        Order::Random => rand::random_range(0..bodies.len()),
+                        Order::Sequential => i as usize % reqs.len(),
+                        Order::Random => rand::random_range(0..reqs.len()),
                     };
-                    let (body, base_file_name) = &bodies[index];
-                    let body = Arc::clone(body);
+                    let (req, base_file_name) = &reqs[index];
+                    let req = req.try_clone().unwrap();
                     let base_file_name = base_file_name.clone();
                     let result = runner
-                        .timed_request(
-                            method,
-                            (*headers).clone(),
-                            (*body).clone(),
-                            i,
-                            base_file_name,
-                            save_response,
-                        )
+                        .timed_request(req, i, base_file_name, save_response)
                         .await;
                     if tx.send(result).await.is_err() {
                         break;
@@ -541,13 +534,18 @@ impl LoadTestRunner {
             templates.push((Arc::new(headers), Arc::new(body)));
         }
         let save_response = output_dir.is_some();
-        let templates = Arc::new(templates);
+        let mut reqs = Vec::new();
+        for (headers, body) in templates.iter() {
+            let req = self.build_request(method, (**headers).clone(), (**body).clone())?;
+            reqs.push(req);
+        }
+        let reqs = Arc::new(reqs);
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
         for _ in 0..self.concurrency {
             let tx = tx.clone();
-            let templates = Arc::clone(&templates);
+            let reqs = Arc::clone(&reqs);
             let runner = Arc::clone(&runner);
             let counter = Arc::clone(&counter);
             tokio::spawn(async move {
@@ -557,22 +555,11 @@ impl LoadTestRunner {
                         break;
                     }
                     let index = match order {
-                        Order::Sequential => i as usize % templates.len(),
-                        Order::Random => rand::random_range(0..templates.len()),
+                        Order::Sequential => i as usize % reqs.len(),
+                        Order::Random => rand::random_range(0..reqs.len()),
                     };
-                    let (headers, body) = &templates[index];
-                    let headers = Arc::clone(headers);
-                    let body = Arc::clone(body);
-                    let result = runner
-                        .timed_request(
-                            method,
-                            (*headers).clone(),
-                            (*body).clone(),
-                            i,
-                            None,
-                            save_response,
-                        )
-                        .await;
+                    let req = reqs[index].try_clone().unwrap();
+                    let result = runner.timed_request(req, i, None, save_response).await;
                     if tx.send(result).await.is_err() {
                         break;
                     }
@@ -604,7 +591,9 @@ impl LoadTestRunner {
     ) -> Result<Response> {
         let headers = header.unwrap_or_default();
         let body = Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?;
-        self.send_request(method, headers, body).await
+        let req = self.build_request(method, headers, body)?;
+        let res = self.client.execute(req).await?;
+        Ok(res.error_for_status()?)
     }
 
     /// Executes a single request with a request body from a file in a directory for debugging.
@@ -639,10 +628,9 @@ impl LoadTestRunner {
             Order::Random => rand::random_range(0..file_names.len()),
         };
         let body = fs::read(&file_names[index]).await?.into();
-        if method == HttpMethod::Get || method == HttpMethod::Head {
-            panic!("Unexpected HTTP method '{method:?}'");
-        }
-        self.send_request(method, headers, body).await
+        let req = self.build_request(method, headers, body)?;
+        let res = self.client.execute(req).await?;
+        Ok(res.error_for_status()?)
     }
 
     /// Executes the load test with a request manifest file for debugging.
@@ -691,36 +679,45 @@ impl LoadTestRunner {
         } else {
             Bytes::new()
         };
-        self.send_request(method, headers, body).await
+        let req = self.build_request(method, headers, body)?;
+        let res = self.client.execute(req).await?;
+        Ok(res.error_for_status()?)
     }
 
-    async fn send_request(
+    fn build_request(
         &self,
         method: HttpMethod,
         headers: HeaderMap,
         body: Bytes,
-    ) -> Result<Response> {
-        match method {
-            HttpMethod::Get => self.get(headers, true).await,
-            HttpMethod::Head => self.head(headers, true).await,
-            HttpMethod::Post => self.post(headers, body, true).await,
-            HttpMethod::Put => self.put(headers, body, true).await,
-            HttpMethod::Delete => self.delete(headers, body, true).await,
-            HttpMethod::Patch => self.patch(headers, body, true).await,
+    ) -> Result<reqwest::Request> {
+        let req_method = match method {
+            HttpMethod::Get => reqwest::Method::GET,
+            HttpMethod::Post => reqwest::Method::POST,
+            HttpMethod::Put => reqwest::Method::PUT,
+            HttpMethod::Delete => reqwest::Method::DELETE,
+            HttpMethod::Patch => reqwest::Method::PATCH,
+            HttpMethod::Head => reqwest::Method::HEAD,
+        };
+        let mut req = self.client.request(req_method, &self.url).headers(headers);
+        if !body.is_empty() {
+            req = req.body(body);
         }
+        Ok(req.build()?)
     }
 
     async fn timed_request(
         &self,
-        method: HttpMethod,
-        headers: HeaderMap,
-        body: Bytes,
+        req: reqwest::Request,
         iteration: u64,
         base_file_name: Option<OsString>,
         save_response: bool,
     ) -> (Result<ResponseData>, Duration, u64, Option<OsString>) {
         let start = Instant::now();
-        let res = self.send_request(method, headers, body).await;
+        let res = self.client.execute(req).await;
+        let res = match res {
+            Ok(r) => r.error_for_status().map_err(anyhow::Error::from),
+            Err(e) => Err(e.into()),
+        };
         match res {
             Ok(resp) => {
                 let version = resp.version();
@@ -940,104 +937,6 @@ impl LoadTestRunner {
             result.min.min(duration)
         };
         result.max = result.max.max(duration);
-    }
-
-    async fn get(&self, headers: HeaderMap, error_for_status: bool) -> Result<Response> {
-        let response = self.client.get(&self.url).headers(headers).send().await?;
-        Ok(if error_for_status {
-            response.error_for_status()?
-        } else {
-            response
-        })
-    }
-
-    async fn post(
-        &self,
-        headers: HeaderMap,
-        body: Bytes,
-        error_for_status: bool,
-    ) -> Result<Response> {
-        let response = self
-            .client
-            .post(&self.url)
-            .headers(headers)
-            .body(body)
-            .send()
-            .await?;
-        Ok(if error_for_status {
-            response.error_for_status()?
-        } else {
-            response
-        })
-    }
-
-    async fn put(
-        &self,
-        headers: HeaderMap,
-        body: Bytes,
-        error_for_status: bool,
-    ) -> Result<Response> {
-        let response = self
-            .client
-            .put(&self.url)
-            .headers(headers)
-            .body(body)
-            .send()
-            .await?;
-        Ok(if error_for_status {
-            response.error_for_status()?
-        } else {
-            response
-        })
-    }
-
-    async fn delete(
-        &self,
-        headers: HeaderMap,
-        body: Bytes,
-        error_for_status: bool,
-    ) -> Result<Response> {
-        let response = self
-            .client
-            .delete(&self.url)
-            .headers(headers)
-            .body(body)
-            .send()
-            .await?;
-        Ok(if error_for_status {
-            response.error_for_status()?
-        } else {
-            response
-        })
-    }
-
-    async fn patch(
-        &self,
-        headers: HeaderMap,
-        body: Bytes,
-        error_for_status: bool,
-    ) -> Result<Response> {
-        let response = self
-            .client
-            .patch(&self.url)
-            .headers(headers)
-            .body(body)
-            .send()
-            .await?;
-        Ok(if error_for_status {
-            response.error_for_status()?
-        } else {
-            response
-        })
-    }
-
-    async fn head(&self, headers: HeaderMap, error_for_status: bool) -> Result<Response> {
-        let response = self.client.head(&self.url).headers(headers).send().await?;
-        Ok(if error_for_status {
-            response.error_for_status()?
-        } else {
-            response
-        })
     }
 
     fn get_quantiles(durations: &mut [Duration], quantiles: &[f64]) -> Vec<Duration> {
