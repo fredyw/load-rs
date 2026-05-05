@@ -87,6 +87,10 @@ struct Args {
     #[arg(short = 'A', long = "user-agent")]
     user_agent: Option<String>,
 
+    /// Proxy server URL.
+    #[arg(short = 'p', long)]
+    proxy: Option<String>,
+
     /// Unit of measurement (seconds or milliseconds).
     #[arg(short = 'u', long, default_value = "milliseconds")]
     unit: Unit,
@@ -349,6 +353,7 @@ async fn main() -> Result<()> {
         args.insecure,
         args.timeout,
         args.user_agent.as_deref(),
+        args.proxy.as_deref(),
     )
     .await?;
     if args.debug {

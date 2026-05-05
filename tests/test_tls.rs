@@ -19,6 +19,7 @@ async fn run_mtls_http1_valid_certs() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -52,6 +53,7 @@ async fn run_mtls_http2_valid_certs() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -83,6 +85,7 @@ async fn run_mtls_invalid_certs() {
         Some(Path::new("tests/tls/untrusted-client.crt")),
         Some(Path::new("tests/tls/untrusted-client.key")),
         false,
+        None,
         None,
         None,
     )

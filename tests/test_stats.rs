@@ -18,6 +18,7 @@ async fn run_success_stats() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -53,6 +54,7 @@ async fn run_success_stats() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )
@@ -95,6 +97,7 @@ async fn run_failure_stats() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -130,6 +133,7 @@ async fn run_failure_stats() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )
@@ -172,6 +176,7 @@ async fn run_all_stats() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -207,6 +212,7 @@ async fn run_all_stats() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )

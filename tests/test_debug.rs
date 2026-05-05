@@ -18,6 +18,7 @@ async fn debug_get() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -40,6 +41,7 @@ async fn debug_head() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -60,6 +62,7 @@ async fn debug_post() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )
@@ -93,6 +96,7 @@ async fn debug_put() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -122,6 +126,7 @@ async fn debug_patch() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )
@@ -155,6 +160,7 @@ async fn debug_delete() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -186,6 +192,7 @@ async fn debug_from_data_file() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -215,6 +222,7 @@ async fn debug_from_dir_sequential() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )
@@ -249,6 +257,7 @@ async fn debug_from_dir_random() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -281,6 +290,7 @@ async fn debug_from_manifest_sequential() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -308,6 +318,7 @@ async fn debug_from_manifest_random() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )

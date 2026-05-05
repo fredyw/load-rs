@@ -18,6 +18,7 @@ A simple load testing tool written in Rust.
   - [Statistics](#statistics)
   - [Timeout](#timeout)
   - [User Agent](#user-agent)
+  - [Proxy](#proxy)
   - [Unit](#unit)
   - [Debugging](#debugging)
   - [Examples](#examples)
@@ -56,6 +57,7 @@ Options:
   -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: success]
   -t, --timeout <TIMEOUT>              Request timeout in seconds
   -A, --user-agent <USER_AGENT>        Custom user agent
+  -p, --proxy <PROXY>                  Proxy server URL
   -u, --unit <UNIT>                    Unit of measurement (seconds or milliseconds) [default: milliseconds]
   -h, --help                           Print help
   -V, --version                        Print version
@@ -127,6 +129,10 @@ The `-t` or `--timeout` option allows you to set a timeout in seconds for each r
 #### User Agent
 
 The `-A` or `--user-agent` option allows you to set a custom user agent string for each request. By default, requests do not include a custom user agent.
+
+#### Proxy
+
+The `-p` or `--proxy` option allows you to route requests through a proxy server.
 
 #### Unit
 

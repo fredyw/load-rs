@@ -23,6 +23,7 @@ async fn test_concurrency_limit() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -60,6 +61,7 @@ async fn test_ui_debouncing() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )
@@ -107,6 +109,7 @@ async fn run_with_timeout() {
         false,
         Some(1),
         None,
+        None,
     )
     .await
     .unwrap();
@@ -134,6 +137,7 @@ async fn test_user_agent() {
         false,
         None,
         Some("custom-agent/1.0"),
+        None,
     )
     .await
     .unwrap();
@@ -149,9 +153,21 @@ async fn test_run_with_generator() {
     let server = run_perf_server().await.unwrap();
     let url = format!("http://{}", server.addr);
 
-    let runner = LoadTestRunner::new(&url, 5, 2, Stats::All, None, None, None, false, None, None)
-        .await
-        .unwrap();
+    let runner = LoadTestRunner::new(
+        &url,
+        5,
+        2,
+        Stats::All,
+        None,
+        None,
+        None,
+        false,
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
 
     let result = runner
         .run_with_generator(

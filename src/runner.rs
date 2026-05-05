@@ -78,6 +78,7 @@ impl LoadTestRunner {
     /// * `insecure`: Allows insecure connections by skipping TLS certificate verification.
     /// * `timeout`: Request timeout in seconds.
     /// * `user_agent`: Custom user agent.
+    /// * `proxy`: Proxy server URL.
     ///
     /// # Returns
     /// A `Result` containing the new `LoadTestRunner` instance if successful.
@@ -93,6 +94,7 @@ impl LoadTestRunner {
         insecure: bool,
         timeout: Option<u64>,
         user_agent: Option<&str>,
+        proxy: Option<&str>,
     ) -> Result<Self> {
         if url.is_empty() {
             bail!("URL cannot be empty");
@@ -118,6 +120,9 @@ impl LoadTestRunner {
         }
         if let Some(ua) = user_agent {
             builder = builder.user_agent(ua);
+        }
+        if let Some(p) = proxy {
+            builder = builder.proxy(reqwest::Proxy::all(p)?);
         }
         if let Some(ca_cert_path) = ca_cert {
             if !ca_cert_path.is_file() {
@@ -888,6 +893,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .await
         .unwrap();
@@ -910,6 +916,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .await
         .unwrap_err();
@@ -928,6 +935,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             None,
             None,
         )
@@ -950,6 +958,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .await
         .unwrap_err();
@@ -968,6 +977,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             None,
             None,
         )
@@ -993,6 +1003,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .await
         .unwrap_err();
@@ -1016,6 +1027,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .await
         .unwrap_err();
@@ -1037,6 +1049,7 @@ mod tests {
             Some(Path::new("tests/tls/client.crt")),
             Some(Path::new("doesnotexist")),
             false,
+            None,
             None,
             None,
         )

@@ -25,6 +25,7 @@ async fn run_success_save_responses() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -67,6 +68,7 @@ async fn run_failure_save_responses() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -107,6 +109,7 @@ async fn run_from_dir_success_save_responses() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )
@@ -152,6 +155,7 @@ async fn run_from_dir_failure_save_responses() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -195,6 +199,7 @@ async fn run_from_manifest_success_save_responses() {
         false,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -233,6 +238,7 @@ async fn run_from_manifest_failure_save_responses() {
         None,
         None,
         false,
+        None,
         None,
         None,
     )
