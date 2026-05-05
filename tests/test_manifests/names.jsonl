@@ -1,0 +1,3 @@
+{"name": "login_request", "path": "/login"}
+{"name": "search_request", "path": "/search"}
+{"path": "/profile"}

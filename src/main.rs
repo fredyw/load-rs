@@ -3,7 +3,7 @@ use bytes::Bytes;
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use load_rs::{Body, HttpMethod, LoadTestRunner, Order, Stats, Unit};
+use load_rs::{Body, HttpMethod, LoadTestRunner, Order, SaveMode, Stats, Unit};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -43,7 +43,7 @@ struct Args {
     #[arg(short = 'i', long = "data-dir", group = "request_body")]
     data_dir: Option<PathBuf>,
 
-    /// Request manifest file (JSON Lines format)
+    /// Request manifest file (JSON Lines format).
     #[arg(short = 'm', long = "manifest-file", group = "request_body")]
     manifest_file: Option<PathBuf>,
 
@@ -70,6 +70,10 @@ struct Args {
     /// Directory to save responses to.
     #[arg(short = 'o', long = "output-dir")]
     output_dir: Option<PathBuf>,
+
+    /// Specifies what to save in the response output.
+    #[arg(short = 'S', long = "save-mode", default_value = "all")]
+    save_mode: SaveMode,
 
     /// Performs a single request and dumps the response.
     #[arg(short = 'G', long)]
@@ -395,7 +399,8 @@ async fn main() -> Result<()> {
     let mut builder = LoadTestRunner::builder(&args.url, requests, concurrency)
         .stats(args.stats)
         .insecure(args.insecure)
-        .quiet(args.quiet);
+        .quiet(args.quiet)
+        .save_mode(args.save_mode);
 
     if let Some(ca_cert) = &args.ca_cert {
         builder = builder.ca_cert(ca_cert);

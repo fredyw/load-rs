@@ -33,9 +33,11 @@ async fn run_success_save_responses() {
         .unwrap();
 
     assert_eq!(result.success, 3);
-    assert!(output_dir.join("success-1.json").exists());
-    assert!(output_dir.join("success-2.json").exists());
-    assert!(output_dir.join("success-3.json").exists());
+    let jsonl_path = output_dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
@@ -65,9 +67,11 @@ async fn run_failure_save_responses() {
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    assert!(output_dir.join("failure-1.json").exists());
-    assert!(output_dir.join("failure-2.json").exists());
-    assert!(output_dir.join("failure-3.json").exists());
+    let jsonl_path = output_dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
@@ -98,9 +102,11 @@ async fn run_from_dir_success_save_responses() {
         .unwrap();
 
     assert_eq!(result.success, 3);
-    assert!(output_dir.join("success-1-test1.json").exists());
-    assert!(output_dir.join("success-2-test2.json").exists());
-    assert!(output_dir.join("success-3-test3.json").exists());
+    let jsonl_path = output_dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
@@ -131,9 +137,11 @@ async fn run_from_dir_failure_save_responses() {
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    assert!(output_dir.join("failure-1-test1.json").exists());
-    assert!(output_dir.join("failure-2-test2.json").exists());
-    assert!(output_dir.join("failure-3-test3.json").exists());
+    let jsonl_path = output_dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
@@ -161,9 +169,11 @@ async fn run_from_manifest_success_save_responses() {
         .unwrap();
 
     assert_eq!(result.success, 3);
-    assert!(output_dir.join("success-1.json").exists());
-    assert!(output_dir.join("success-2.json").exists());
-    assert!(output_dir.join("success-3.json").exists());
+    let jsonl_path = output_dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
@@ -191,7 +201,9 @@ async fn run_from_manifest_failure_save_responses() {
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    assert!(output_dir.join("failure-1.json").exists());
-    assert!(output_dir.join("failure-2.json").exists());
-    assert!(output_dir.join("failure-3.json").exists());
+    let jsonl_path = output_dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 }

@@ -56,6 +56,7 @@ Options:
   -I, --insecure                       Allows insecure connections by skipping TLS certificate verification
   -O, --order <ORDER>                  Order to process files from --data-dir or --manifest-file [default: sequential]
   -o, --output-dir <OUTPUT_DIR>        Directory to save responses to
+  -S, --save-mode <SAVE_MODE>          Specifies what to save in the response output [default: all]
   -G, --debug                          Performs a single request and dumps the response
   -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: all]
   -t, --timeout <TIMEOUT>              Request timeout in seconds
@@ -69,23 +70,35 @@ Options:
 
 #### Output Files
 
-When the `-o` or `--output-dir` option is specified, `load-rs` will save the response of each request
-to a file in the specified directory.
+When the `-o` or `--output-dir` option is specified, `load-rs` will stream the response of each request
+to a single `responses.jsonl` file in the specified directory. This file uses the 
+[JSON Lines](https://jsonlines.org/) format.
 
-The output file is a JSON object with the following fields:
+Each record in the `responses.jsonl` file contains:
 
+- `name`: The identifier of the request (e.g., manifest `name`, filename, or line number).
+- `iteration`: The request iteration number.
+- `duration`: The duration of the request (nanoseconds and seconds).
+- `status`: The HTTP status code (present even for non-2xx responses).
 - `version`: The HTTP version of the response.
-- `status`: The HTTP status code of the response.
-- `headers`: A map of the response headers.
+- `headers`: A map of the response headers (captured for both success and failures).
 - `body`: The response body as a string. If the body is not valid UTF-8, it will be base64-encoded.
-- `duration`: The duration of the request.
-- `error`: The error message if the request failed.
+- `error`: The error message if the request failed to connect or send.
+
+You can control the granularity of the saved data using the `--save-mode` option:
+
+- `all` (default): Saves everything listed above.
+- `headers`: Saves status and headers only (no body).
+- `body`: Saves status and body only (no headers).
 
 #### Request Manifest
 
 The manifest file is a [JSON Lines](https://jsonlines.org/) file where each line is a JSON object
 that defines a request. The following fields are supported:
 
+- `name`: An optional identifier for the request, which will appear in the output.
+- `method`: Optional HTTP method override (e.g., "GET", "POST").
+- `path`: Optional URL path override (joined with the base URL).
 - `headers`: A map of HTTP headers to be sent with the request.
 - `body`: The request body as a string.
 - `binary_body`: The request body as a base64-encoded string.
@@ -95,8 +108,8 @@ that defines a request. The following fields are supported:
 **Example `manifest.jsonl`**
 
 ```json
-{"headers": {"Content-Type": "application/json"}, "body": "{\"key\": \"value1\"}"}
-{"headers": {"Content-Type": "application/json"}, "body": "{\"key\": \"value2\"}"}
+{"name": "login", "headers": {"Content-Type": "application/json"}, "body": "{\"key\": \"value1\"}"}
+{"name": "search", "path": "/v1/search", "method": "GET"}
 {"headers": {"Content-Type": "application/octet-stream"}, "binary_body": "SGVsbG8gd29ybGQ="}
 ```
 
@@ -239,6 +252,7 @@ async fn main() -> anyhow::Result<()> {
     // Initialize the runner using the builder pattern
     let runner = LoadTestRunner::builder(url, requests, concurrency)
         .stats(Stats::All)
+        .save_mode(load_rs::SaveMode::Headers)
         .timeout(30)
         .build()
         .await?;

@@ -20,9 +20,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::fs;
 use tokio::fs::File;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::mpsc;
-use tokio::task::JoinSet;
 
 /// A load test runner responsible for configuring and executing a load test.
 #[derive(Debug, Clone)]
@@ -37,6 +36,8 @@ pub struct LoadTestRunner {
     pub stats: Stats,
     /// Quiet mode: suppress progress updates.
     pub quiet: bool,
+    /// Specifies what to save in the response output.
+    pub save_mode: crate::models::SaveMode,
     /// HTTP client.
     client: Client,
 }
@@ -63,6 +64,7 @@ impl LoadTestRunnerBuilder {
                 user_agent: None,
                 proxy: None,
                 quiet: false,
+                save_mode: crate::models::SaveMode::All,
             },
         }
     }
@@ -121,6 +123,12 @@ impl LoadTestRunnerBuilder {
         self
     }
 
+    /// Sets the save mode for response output.
+    pub fn save_mode(mut self, mode: crate::models::SaveMode) -> Self {
+        self.config.save_mode = mode;
+        self
+    }
+
     /// Builds the `LoadTestRunner`.
     pub async fn build(self) -> Result<LoadTestRunner> {
         LoadTestRunner::new(self.config).await
@@ -129,6 +137,7 @@ impl LoadTestRunnerBuilder {
 
 #[derive(Debug, Clone, Deserialize)]
 struct RequestTemplate {
+    name: Option<String>,
     method: Option<HttpMethod>,
     path: Option<String>,
     #[serde(default)]
@@ -149,7 +158,7 @@ enum WorkerResult {
         res: Result<ResponseData>,
         duration: Duration,
         iteration: u64,
-        base_file_name: Option<OsString>,
+        name: Option<OsString>,
     },
 }
 
@@ -222,6 +231,7 @@ impl LoadTestRunner {
             concurrency: config.concurrency,
             stats: config.stats,
             quiet: config.quiet,
+            save_mode: config.save_mode,
             client: builder.build()?,
         })
     }
@@ -288,11 +298,7 @@ impl LoadTestRunner {
                     }
                     let req_gen_result = generator.generate(i);
                     let result = match req_gen_result {
-                        Ok((req, base_file_name)) => {
-                            runner
-                                .timed_request(req, i, base_file_name, save_response)
-                                .await
-                        }
+                        Ok((req, name)) => runner.timed_request(req, i, name, save_response).await,
                         Err(e) => WorkerResult::StatsOnly {
                             success: false,
                             duration: Duration::default(),
@@ -407,14 +413,14 @@ impl LoadTestRunner {
             ));
         }
         let mut reqs = Vec::new();
-        for (body, base_file_name) in bodies.iter() {
+        for (body, name) in bodies.iter() {
             let req = self.build_request(
                 method,
                 &self.url,
                 header.clone().unwrap_or_default(),
                 (**body).clone(),
             )?;
-            reqs.push((req, base_file_name.clone()));
+            reqs.push((req, name.clone()));
         }
         let reqs = Arc::new(reqs);
         self.run_with_generator(
@@ -423,8 +429,8 @@ impl LoadTestRunner {
                     Order::Sequential => iteration as usize % reqs.len(),
                     Order::Random => rand::random_range(0..reqs.len()),
                 };
-                let (req, base_file_name) = &reqs[index];
-                Ok((req.try_clone().unwrap(), base_file_name.clone()))
+                let (req, name) = &reqs[index];
+                Ok((req.try_clone().unwrap(), name.clone()))
             },
             output_dir,
             in_progress,
@@ -459,7 +465,9 @@ impl LoadTestRunner {
         let reader = tokio::io::BufReader::new(file);
         let mut lines = tokio::io::AsyncBufReadExt::lines(reader);
         let mut reqs = Vec::new();
+        let mut line_num = 0;
         while let Some(line) = lines.next_line().await? {
+            line_num += 1;
             let template: RequestTemplate = serde_json::from_str(&line)?;
             let mut headers = HeaderMap::new();
             for (name, value) in &template.headers {
@@ -475,7 +483,11 @@ impl LoadTestRunner {
             let req_method = template.method.unwrap_or(method);
             let req_url = Self::join_url(&self.url, template.path.as_deref())?;
             let req = self.build_request(req_method, &req_url, headers, body)?;
-            reqs.push(req);
+            let id = template
+                .name
+                .clone()
+                .or_else(|| Some(format!("line-{}", line_num)));
+            reqs.push((req, id));
         }
         if reqs.is_empty() {
             bail!(
@@ -490,8 +502,8 @@ impl LoadTestRunner {
                     Order::Sequential => iteration as usize % reqs.len(),
                     Order::Random => rand::random_range(0..reqs.len()),
                 };
-                let req = &reqs[index];
-                Ok((req.try_clone().unwrap(), None))
+                let (req, id) = &reqs[index];
+                Ok((req.try_clone().unwrap(), id.as_ref().map(OsString::from)))
             },
             output_dir,
             in_progress,
@@ -641,20 +653,18 @@ impl LoadTestRunner {
         &self,
         req: reqwest::Request,
         iteration: u64,
-        base_file_name: Option<OsString>,
+        name: Option<OsString>,
         save_response: bool,
     ) -> WorkerResult {
         let start = Instant::now();
         let res = self.client.execute(req).await;
-        let status_code = res.as_ref().ok().map(|r| r.status());
-        let res = match res {
-            Ok(r) => r.error_for_status().map_err(anyhow::Error::from),
-            Err(e) => Err(e.into()),
-        };
         let duration = start.elapsed();
+
         if !save_response {
             match res {
                 Ok(resp) => {
+                    let status_code = resp.status();
+                    let success = status_code.is_success();
                     use futures::StreamExt;
                     let mut stream = resp.bytes_stream();
                     while let Some(chunk) = stream.next().await {
@@ -663,16 +673,16 @@ impl LoadTestRunner {
                                 success: false,
                                 duration: start.elapsed(),
                                 iteration,
-                                status_code,
+                                status_code: Some(status_code),
                                 error: Some(e.to_string()),
                             };
                         }
                     }
                     WorkerResult::StatsOnly {
-                        success: true,
+                        success,
                         duration: start.elapsed(),
                         iteration,
-                        status_code,
+                        status_code: Some(status_code),
                         error: None,
                     }
                 }
@@ -680,7 +690,7 @@ impl LoadTestRunner {
                     success: false,
                     duration,
                     iteration,
-                    status_code,
+                    status_code: None,
                     error: Some(e.to_string()),
                 },
             }
@@ -698,23 +708,23 @@ impl LoadTestRunner {
                                 headers,
                                 body,
                             }),
-                            duration: start.elapsed(),
+                            duration,
                             iteration,
-                            base_file_name,
+                            name,
                         },
                         Err(e) => WorkerResult::WithResponse {
                             res: Err(e.into()),
-                            duration: start.elapsed(),
+                            duration,
                             iteration,
-                            base_file_name,
+                            name,
                         },
                     }
                 }
                 Err(e) => WorkerResult::WithResponse {
-                    res: Err(e),
+                    res: Err(e.into()),
                     duration,
                     iteration,
-                    base_file_name,
+                    name,
                 },
             }
         }
@@ -776,15 +786,18 @@ impl LoadTestRunner {
         F: Fn(LoadTestEvent),
     {
         let mut result = LoadTestResult::new();
-        if let Some(output_dir) = output_dir {
+        let mut output_writer = if let Some(output_dir) = output_dir {
             fs::create_dir_all(output_dir).await?;
-        }
+            let output_file = output_dir.join("responses.jsonl");
+            Some(BufWriter::new(File::create(output_file).await?))
+        } else {
+            None
+        };
+
         let test_time = Instant::now();
         let mut last_update = Instant::now();
         let update_interval = Duration::from_millis(100);
-        let output_dir = output_dir.map(|p| p.to_path_buf());
-        let requests = self.requests;
-        let mut file_tasks = JoinSet::new();
+
         while let Some(worker_res) = rx.recv().await {
             result.completed += 1;
             let mut req_result = RequestResult {
@@ -794,6 +807,7 @@ impl LoadTestRunner {
                 status_code: None,
                 error: None,
             };
+
             match worker_res {
                 WorkerResult::StatsOnly {
                     success,
@@ -810,12 +824,16 @@ impl LoadTestRunner {
 
                     if success {
                         result.success += 1;
-                        if self.stats == Stats::All || self.stats == Stats::Success {
+                        if self.stats == crate::models::Stats::All
+                            || self.stats == crate::models::Stats::Success
+                        {
                             Self::update_stats(&mut result, duration)
                         }
                     } else {
                         result.failures += 1;
-                        if self.stats == Stats::All || self.stats == Stats::Error {
+                        if self.stats == crate::models::Stats::All
+                            || self.stats == crate::models::Stats::Error
+                        {
                             Self::update_stats(&mut result, duration)
                         }
                     }
@@ -824,59 +842,63 @@ impl LoadTestRunner {
                     res,
                     duration,
                     iteration,
-                    base_file_name,
+                    name,
                 } => {
                     req_result.iteration = iteration;
                     req_result.duration = duration;
                     match res {
                         Ok(response) => {
-                            req_result.success = true;
+                            let success = response.status.is_success();
+                            req_result.success = success;
                             req_result.status_code = Some(response.status);
-                            result.success += 1;
-                            if self.stats == Stats::All || self.stats == Stats::Success {
-                                Self::update_stats(&mut result, duration)
+                            if success {
+                                result.success += 1;
+                                if self.stats == crate::models::Stats::All
+                                    || self.stats == crate::models::Stats::Success
+                                {
+                                    Self::update_stats(&mut result, duration)
+                                }
+                            } else {
+                                result.failures += 1;
+                                if self.stats == crate::models::Stats::All
+                                    || self.stats == crate::models::Stats::Error
+                                {
+                                    Self::update_stats(&mut result, duration)
+                                }
                             }
-                            if let Some(output_dir) = &output_dir {
-                                let output_dir = output_dir.clone();
-                                let base_file_name = base_file_name.clone();
-                                file_tasks.spawn(async move {
-                                    let output_file = Self::get_output_file(
-                                        requests,
-                                        &output_dir,
-                                        iteration + 1,
-                                        base_file_name.as_deref(),
-                                        true,
-                                    );
-                                    let _ = Self::write_success_output_file(
-                                        output_file,
-                                        response,
-                                        duration,
-                                    )
-                                    .await;
-                                });
+
+                            if let Some(writer) = output_writer.as_mut() {
+                                let output = Self::format_response_output(
+                                    response,
+                                    duration,
+                                    iteration,
+                                    name.as_deref(),
+                                    self.save_mode,
+                                );
+                                let mut line = serde_json::to_vec(&output)?;
+                                line.push(b'\n');
+                                writer.write_all(&line).await?;
                             }
                         }
                         Err(error) => {
                             req_result.success = false;
                             req_result.error = Some(error.to_string());
                             result.failures += 1;
-                            if self.stats == Stats::All || self.stats == Stats::Error {
+                            if self.stats == crate::models::Stats::All
+                                || self.stats == crate::models::Stats::Error
+                            {
                                 Self::update_stats(&mut result, duration)
                             }
-                            if let Some(output_dir) = &output_dir {
-                                let output_dir = output_dir.clone();
-                                let base_file_name = base_file_name.clone();
-                                file_tasks.spawn(async move {
-                                    let output_file = Self::get_output_file(
-                                        requests,
-                                        &output_dir,
-                                        iteration + 1,
-                                        base_file_name.as_deref(),
-                                        false,
-                                    );
-                                    let _ =
-                                        Self::write_failure_output_file(output_file, error).await;
+                            if let Some(writer) = output_writer.as_mut() {
+                                let output = json!({
+                                    "iteration": iteration + 1,
+                                    "error": error.to_string(),
+                                    "duration": duration,
+                                    "name": name.map(|s| s.to_string_lossy().to_string()),
                                 });
+                                let mut line = serde_json::to_vec(&output)?;
+                                line.push(b'\n');
+                                writer.write_all(&line).await?;
                             }
                         }
                     }
@@ -904,6 +926,11 @@ impl LoadTestRunner {
                 }
             }
         }
+
+        if let Some(mut writer) = output_writer {
+            writer.flush().await?;
+        }
+
         result.elapsed = test_time.elapsed();
         let elapsed_secs = result.elapsed.as_secs_f64();
         if elapsed_secs > 0.0 {
@@ -915,17 +942,7 @@ impl LoadTestRunner {
         }
         result.update_percentiles();
         in_progress(LoadTestEvent::ProgressUpdate(&result));
-        // Wait for all file writing tasks to complete.
-        while file_tasks.join_next().await.is_some() {}
-        result.elapsed = test_time.elapsed();
-        let elapsed_secs = result.elapsed.as_secs_f64();
-        if elapsed_secs > 0.0 {
-            result.rps = result.completed as f64 / elapsed_secs;
-        }
-        if result.completed > 0 {
-            result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
-            result.failure_rate = (result.failures as f64 / result.completed as f64) * 100.0;
-        }
+
         Ok(result)
     }
 
@@ -940,63 +957,63 @@ impl LoadTestRunner {
         result.max = result.max.max(duration);
     }
 
-    fn get_output_file(
-        num_requests: u32,
-        output_dir: &Path,
-        iteration: u64,
-        base_file_name: Option<&OsStr>,
-        success: bool,
-    ) -> PathBuf {
-        if let Some(base_file_name) = base_file_name {
-            output_dir.join(format!(
-                "{}-{:0width$}-{}.json",
-                if success { "success" } else { "failure" },
-                iteration,
-                base_file_name.to_string_lossy(),
-                width = num_requests.to_string().len()
-            ))
-        } else {
-            output_dir.join(format!(
-                "{}-{:0width$}.json",
-                if success { "success" } else { "failure" },
-                iteration,
-                width = num_requests.to_string().len()
-            ))
-        }
-    }
-
-    async fn write_success_output_file(
-        output_file: PathBuf,
+    fn format_response_output(
         response: ResponseData,
         duration: Duration,
-    ) -> Result<()> {
-        let version: String = format!("{:?}", response.version);
-        let status_code = response.status.as_u16();
-        let headers: HashMap<String, String> = response
-            .headers
-            .iter()
-            .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
-            .collect();
-        let body_bytes = response.body;
-        let body_string: String = match str::from_utf8(&body_bytes) {
-            Ok(bytes) => bytes.to_string(),
-            Err(_) => BASE64_STANDARD.encode(&body_bytes),
-        };
-        let output = json!({
-            "version": version,
-            "status": status_code,
-            "headers": headers,
-            "body": body_string,
+        iteration: u64,
+        name: Option<&OsStr>,
+        save_mode: crate::models::SaveMode,
+    ) -> serde_json::Value {
+        let mut output = json!({
+            "iteration": iteration + 1,
             "duration": duration,
         });
-        Ok(fs::write(output_file, serde_json::to_string_pretty(&output)?).await?)
-    }
 
-    async fn write_failure_output_file(output_file: PathBuf, error: anyhow::Error) -> Result<()> {
-        let output = json!({
-            "error": error.to_string(),
-        });
-        Ok(fs::write(output_file, serde_json::to_string_pretty(&output)?).await?)
+        if let Some(name) = name {
+            output["name"] = json!(name.to_string_lossy());
+        }
+
+        match save_mode {
+            crate::models::SaveMode::All => {
+                output["version"] = json!(format!("{:?}", response.version));
+                output["status"] = json!(response.status.as_u16());
+                let headers: HashMap<String, String> = response
+                    .headers
+                    .iter()
+                    .map(|(name, value)| {
+                        (name.to_string(), value.to_str().unwrap_or("").to_string())
+                    })
+                    .collect();
+                output["headers"] = json!(headers);
+                let body_bytes = response.body;
+                let body_string: String = match str::from_utf8(&body_bytes) {
+                    Ok(bytes) => bytes.to_string(),
+                    Err(_) => BASE64_STANDARD.encode(&body_bytes),
+                };
+                output["body"] = json!(body_string);
+            }
+            crate::models::SaveMode::Headers => {
+                output["status"] = json!(response.status.as_u16());
+                let headers: HashMap<String, String> = response
+                    .headers
+                    .iter()
+                    .map(|(name, value)| {
+                        (name.to_string(), value.to_str().unwrap_or("").to_string())
+                    })
+                    .collect();
+                output["headers"] = json!(headers);
+            }
+            crate::models::SaveMode::Body => {
+                output["status"] = json!(response.status.as_u16());
+                let body_bytes = response.body;
+                let body_string: String = match str::from_utf8(&body_bytes) {
+                    Ok(bytes) => bytes.to_string(),
+                    Err(_) => BASE64_STANDARD.encode(&body_bytes),
+                };
+                output["body"] = json!(body_string);
+            }
+        }
+        output
     }
 }
 
@@ -1007,7 +1024,7 @@ mod tests {
     #[tokio::test]
     async fn new_succeeds() {
         let result = LoadTestRunner::builder("http://localhost:8080", 10, 2)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .build()
             .await
             .unwrap();
@@ -1020,7 +1037,7 @@ mod tests {
     #[tokio::test]
     async fn new_success() {
         let runner = LoadTestRunner::builder("http://localhost:8080", 10, 2)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .timeout(30)
             .user_agent("test-agent")
             .build()
@@ -1030,13 +1047,13 @@ mod tests {
         assert_eq!(runner.url, "http://localhost:8080");
         assert_eq!(runner.requests, 10);
         assert_eq!(runner.concurrency, 2);
-        assert_eq!(runner.stats, Stats::Success);
+        assert_eq!(runner.stats, crate::models::Stats::Success);
     }
 
     #[tokio::test]
     async fn new_url_is_empty_fails() {
         let result = LoadTestRunner::builder("", 2, 2)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .build()
             .await
             .unwrap_err();
@@ -1047,7 +1064,7 @@ mod tests {
     #[tokio::test]
     async fn new_num_requests_is_zero_fails() {
         let result = LoadTestRunner::builder("http://localhost:8080", 0, 2)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .build()
             .await
             .unwrap_err();
@@ -1058,7 +1075,7 @@ mod tests {
     #[tokio::test]
     async fn new_num_concurrency_is_zero_fails() {
         let result = LoadTestRunner::builder("http://localhost:8080", 2, 0)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .build()
             .await
             .unwrap_err();
@@ -1069,7 +1086,7 @@ mod tests {
     #[tokio::test]
     async fn new_num_concurrency_greater_than_num_requests_fails() {
         let result = LoadTestRunner::builder("http://localhost:8080", 2, 3)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .build()
             .await
             .unwrap_err();
@@ -1083,7 +1100,7 @@ mod tests {
     #[tokio::test]
     async fn new_ca_cert_does_not_exist_fails() {
         let result = LoadTestRunner::builder("http://localhost:8080", 10, 2)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .ca_cert("doesnotexist")
             .build()
             .await
@@ -1098,7 +1115,7 @@ mod tests {
     #[tokio::test]
     async fn new_cert_does_not_exist_fails() {
         let result = LoadTestRunner::builder("http://localhost:8080", 10, 2)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .cert("doesnotexist")
             .key("tests/tls/key.pem")
             .build()
@@ -1114,7 +1131,7 @@ mod tests {
     #[tokio::test]
     async fn new_key_does_not_exist_fails() {
         let result = LoadTestRunner::builder("http://localhost:8080", 10, 2)
-            .stats(Stats::Success)
+            .stats(crate::models::Stats::Success)
             .cert("tests/tls/client.crt")
             .key("doesnotexist")
             .build()
@@ -1148,7 +1165,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_data_succeeds() {
-        let bytes = LoadTestRunner::get_data(Body::Data("Hello".into()))
+        let bytes = LoadTestRunner::get_data(crate::models::Body::Data("Hello".into()))
             .await
             .unwrap();
 
@@ -1157,7 +1174,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_data_file_succeeds() {
-        let bytes = LoadTestRunner::get_data(Body::DataFile(PathBuf::from(
+        let bytes = LoadTestRunner::get_data(crate::models::Body::DataFile(PathBuf::from(
             "tests/test_requests/test1.json",
         )))
         .await
@@ -1171,9 +1188,10 @@ mod tests {
 
     #[tokio::test]
     async fn get_data_file_does_not_exist_fails() {
-        let err = LoadTestRunner::get_data(Body::DataFile(PathBuf::from("doesnotexist")))
-            .await
-            .unwrap_err();
+        let err =
+            LoadTestRunner::get_data(crate::models::Body::DataFile(PathBuf::from("doesnotexist")))
+                .await
+                .unwrap_err();
 
         assert_eq!(
             err.to_string(),
@@ -1183,40 +1201,15 @@ mod tests {
 
     #[tokio::test]
     async fn get_invalid_data_file_fails() {
-        let err = LoadTestRunner::get_data(Body::DataFile(PathBuf::from("tests/test_requests")))
-            .await
-            .unwrap_err();
+        let err = LoadTestRunner::get_data(crate::models::Body::DataFile(PathBuf::from(
+            "tests/test_requests",
+        )))
+        .await
+        .unwrap_err();
 
         assert_eq!(
             err.to_string(),
             "Data file 'tests/test_requests' does not exist or is not a file"
         );
-    }
-
-    #[test]
-    fn get_output_file_succeeds() {
-        let output_file = LoadTestRunner::get_output_file(100, Path::new("/tmp"), 3, None, true);
-        assert_eq!(output_file, Path::new("/tmp/success-003.json"));
-
-        let output_file = LoadTestRunner::get_output_file(100, Path::new("/tmp"), 3, None, false);
-        assert_eq!(output_file, Path::new("/tmp/failure-003.json"));
-
-        let output_file = LoadTestRunner::get_output_file(
-            100,
-            Path::new("/tmp"),
-            3,
-            Some(OsStr::new("request")),
-            true,
-        );
-        assert_eq!(output_file, Path::new("/tmp/success-003-request.json"));
-
-        let output_file = LoadTestRunner::get_output_file(
-            100,
-            Path::new("/tmp"),
-            3,
-            Some(OsStr::new("request")),
-            false,
-        );
-        assert_eq!(output_file, Path::new("/tmp/failure-003-request.json"));
     }
 }

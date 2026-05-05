@@ -247,6 +247,42 @@ impl FromStr for Unit {
     }
 }
 
+/// Specifies what response data to save to the output.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SaveMode {
+    /// Save only response headers.
+    Headers,
+    /// Save only response body.
+    Body,
+    /// Save all response data (headers, body, version, status, duration).
+    #[default]
+    All,
+}
+
+impl FromStr for SaveMode {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "headers" => Ok(SaveMode::Headers),
+            "body" => Ok(SaveMode::Body),
+            "all" => Ok(SaveMode::All),
+            _ => bail!("'{s}' is not a valid save mode"),
+        }
+    }
+}
+
+impl std::fmt::Display for SaveMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SaveMode::Headers => write!(f, "headers"),
+            SaveMode::Body => write!(f, "body"),
+            SaveMode::All => write!(f, "all"),
+        }
+    }
+}
+
 /// Represents the data received from a successful HTTP request.
 #[derive(Debug, Clone)]
 pub struct ResponseData {
@@ -313,6 +349,8 @@ pub struct LoadTestConfig {
     pub proxy: Option<String>,
     /// Quiet mode: suppress progress updates.
     pub quiet: bool,
+    /// Specifies what to save in the response output.
+    pub save_mode: SaveMode,
 }
 
 /// Events emitted during the load test.

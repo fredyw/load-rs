@@ -474,9 +474,11 @@ fn run_save_responses() -> Result<()> {
 
     cmd.assert().success();
 
-    assert!(dir.join("success-1.json").exists());
-    assert!(dir.join("success-2.json").exists());
-    assert!(dir.join("success-3.json").exists());
+    let jsonl_path = dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = std::fs::read_to_string(jsonl_path).unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 
     Ok(())
 }
@@ -509,9 +511,11 @@ fn run_data_dir_save_responses() -> Result<()> {
 
     cmd.assert().success();
 
-    assert!(dir.join("success-1-test1.json").exists());
-    assert!(dir.join("success-2-test2.json").exists());
-    assert!(dir.join("success-3-test3.json").exists());
+    let jsonl_path = dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = std::fs::read_to_string(jsonl_path).unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 
     Ok(())
 }
@@ -542,9 +546,11 @@ fn run_manifest_save_responses() -> Result<()> {
 
     cmd.assert().success();
 
-    assert!(dir.join("success-1.json").exists());
-    assert!(dir.join("success-2.json").exists());
-    assert!(dir.join("success-3.json").exists());
+    let jsonl_path = dir.join("responses.jsonl");
+    assert!(jsonl_path.exists());
+    let content = std::fs::read_to_string(jsonl_path).unwrap();
+    let lines: Vec<_> = content.lines().collect();
+    assert_eq!(lines.len(), 3);
 
     Ok(())
 }
