@@ -35,8 +35,12 @@ Since `load-rs` is a performance-oriented tool:
 - Leverage `tokio` and `reqwest` for asynchronous I/O.
 
 ## 5. Repository Structure
-- `src/lib.rs`: Core library logic (request generation, execution, statistics).
-- `src/main.rs`: CLI entry point and argument parsing.
-- `tests/`: Integration tests.
+- `src/lib.rs`: Main library entry point (module declarations and re-exports).
+- `src/models.rs`: Core data structures (HttpMethod, Stats, LoadTestResult, etc.).
+- `src/runner.rs`: The `LoadTestRunner` implementation and execution logic.
+- `src/generator.rs`: `RequestGenerator` trait and dynamic request logic.
+- `src/main.rs`: CLI entry point, argument parsing, and UI reporting.
+- `tests/`: Integration tests for CLI, statistics, TLS, and core logic.
+
 
 Thank you for contributing to `load-rs`!
