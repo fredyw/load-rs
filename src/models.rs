@@ -35,7 +35,7 @@ impl FromStr for HttpMethod {
 }
 
 /// Represents the aggregated results of a load test run.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LoadTestResult {
     ///  Total number of successful requests.
     pub success: u32,
@@ -46,6 +46,7 @@ pub struct LoadTestResult {
     /// Cumulative duration of all successful requests combined.
     pub total_duration: Duration,
     /// A histogram of individual response durations (in microseconds) for each successful request.
+    #[serde(skip)]
     pub durations: hdrhistogram::Histogram<u64>,
     /// The average response time for successful requests.
     pub avg: Duration,

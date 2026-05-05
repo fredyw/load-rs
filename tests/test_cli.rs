@@ -577,3 +577,25 @@ fn run_unit_seconds() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn run_json_output() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args([
+        "-n",
+        "1",
+        "-c",
+        "1",
+        "-X",
+        "GET",
+        "--json",
+        "https://mockhttp.org/get",
+    ]);
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("\"success\": 1"))
+        .stdout(predicate::str::contains("\"completed\": 1"));
+
+    Ok(())
+}

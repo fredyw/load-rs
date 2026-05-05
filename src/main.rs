@@ -106,6 +106,10 @@ struct Args {
     /// Disables HTTP keep-alive.
     #[arg(long)]
     disable_keepalive: bool,
+
+    /// Output results in JSON format.
+    #[arg(long)]
+    json: bool,
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -289,6 +293,12 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
         pb.finish_and_clear();
         result
     };
+
+    if args.json {
+        println!("{}", serde_json::to_string_pretty(&result)?);
+        return Ok(());
+    }
+
     println!(
         "{} {} in {}",
         style("✓").green().bold(),

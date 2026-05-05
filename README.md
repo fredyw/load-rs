@@ -65,6 +65,7 @@ Options:
   -u, --unit <UNIT>                    Unit of measurement (seconds or milliseconds) [default: milliseconds]
   -q, --quiet                          Quiet mode: suppress progress updates
       --disable-keepalive              Disables HTTP keep-alive
+      --json                           Output results in JSON format
   -h, --help                           Print help
   -V, --version                        Print version
 ```
@@ -164,6 +165,10 @@ The `-q` or `--quiet` option suppresses the real-time progress bar and updates d
 #### Connection Control
 
 The `--disable-keepalive` flag disables HTTP keep-alive. By default, `load-rs` reuses connections to improve performance. Disabling it forces the tool to create a new TCP connection for every request, which is useful for simulating "cold" clients or high connection churn.
+
+#### JSON Output
+
+The `--json` flag causes `load-rs` to output the final test results in a structured JSON format instead of the human-readable summary. This is ideal for CI/CD pipelines, automated benchmarking, or feeding the results into other tools for analysis.
 
 #### Debugging
 
