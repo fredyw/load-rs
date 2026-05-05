@@ -25,6 +25,9 @@ A simple load testing tool written in Rust.
 - [Building](#building)
 - [Installing](#installing)
 - [Testing](#testing)
+- [Library Usage](#library-usage)
+  - [Basic Usage](#basic-usage)
+  - [Custom Request Generator](#custom-request-generator)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -202,6 +205,120 @@ To run the tests, you can use the following command.
 
 ```
 ./test.sh
+```
+
+### Library Usage
+
+`load-rs` can be used as a library in your own Rust projects. Add it to your `Cargo.toml`:
+
+```toml
+[dependencies]
+load-rs = { git = "https://github.com/fredyw/load-rs.git" }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+```
+
+#### Basic Usage
+
+The following example shows how to run a simple GET load test:
+
+```rust
+use load_rs::{LoadTestRunner, HttpMethod, Stats, LoadTestEvent};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let url = "http://localhost:8080";
+    let requests = 100;
+    let concurrency = 10;
+
+    // Initialize the runner
+    let runner = LoadTestRunner::new(
+        url,
+        requests,
+        concurrency,
+        Stats::Success,
+        None, // ca_cert
+        None, // cert
+        None, // key
+        false, // insecure
+        Some(30), // timeout (seconds)
+        None, // user_agent
+        None, // proxy
+    ).await?;
+
+    // Run the test
+    let result = runner.run(
+        HttpMethod::Get,
+        None, // headers
+        None, // body
+        None, // output_dir
+        |event| {
+            // Handle real-time events
+            match event {
+                LoadTestEvent::ProgressUpdate(stats) => {
+                    println!("Progress: {}/{} requests, RPS: {:.2}", 
+                        stats.completed, requests, stats.rps);
+                }
+                LoadTestEvent::RequestFinished(res) => {
+                    if !res.success {
+                        eprintln!("Request {} failed: {:?}", res.iteration, res.error);
+                    }
+                }
+            }
+        }
+    ).await?;
+
+    println!("\nTest Complete!");
+    println!("Average Latency: {:?}", result.avg);
+    println!("P95 Latency: {:?}", result.p95);
+
+    Ok(())
+}
+```
+
+#### Custom Request Generator
+
+For more complex scenarios, you can use a custom request generator to dynamically create requests (e.g., with unique IDs or timestamps in the body).
+
+```rust
+use load_rs::{LoadTestRunner, Stats};
+use reqwest::{Client, Method};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let runner = LoadTestRunner::new(
+        "http://localhost:8080",
+        1000,
+        50,
+        Stats::Success,
+        None, None, None, false, None, None, None
+    ).await?;
+
+    // You can share a client or any other state in the generator
+    let client = Client::new();
+
+    let result = runner.run_with_generator(
+        move |iteration| {
+            // This closure is called for each request
+            let req = client.request(Method::POST, "http://localhost:8080/ingest")
+                .header("X-Iteration", iteration.to_string())
+                .body(format!("{{\"id\": {}, \"timestamp\": {}}}", 
+                    iteration, 
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)?
+                        .as_secs()))
+                .build()?;
+            
+            // Return the request and an optional filename for saving the response
+            Ok((req, None))
+        },
+        None, // output_dir
+        |_| {} // event callback
+    ).await?;
+
+    println!("Total Success: {}", result.success);
+    Ok(())
+}
 ```
 
 ### Contributing
