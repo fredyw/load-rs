@@ -75,6 +75,9 @@ impl LoadTestRunner {
     /// * `ca_cert`: Custom CA certificate file (PEM format).
     /// * `cert`: Public certificate file (PEM format).
     /// * `key`: Private key file (PEM format).
+    /// * `insecure`: Allows insecure connections by skipping TLS certificate verification.
+    /// * `timeout`: Request timeout in seconds.
+    /// * `user_agent`: Custom user agent.
     ///
     /// # Returns
     /// A `Result` containing the new `LoadTestRunner` instance if successful.
@@ -161,6 +164,18 @@ impl LoadTestRunner {
     /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`
     /// with the complete summary of the test run.
     /// Executes the load test using a custom request generator.
+    ///
+    /// This method allows for maximum flexibility by providing a `RequestGenerator`
+    /// which can dynamically create requests for each iteration.
+    ///
+    /// # Parameters
+    ///
+    /// * `generator`: A request generator that implements the `RequestGenerator` trait.
+    /// * `output_dir`: Optional directory to save response data.
+    /// * `in_progress`: A callback function that is invoked as the test progresses.
+    ///
+    /// # Returns
+    /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`.
     pub async fn run_with_generator<G, T>(
         &self,
         generator: G,
@@ -212,6 +227,18 @@ impl LoadTestRunner {
         self.process_results(rx, in_progress, output_dir).await
     }
 
+    /// Executes the load test with the specified HTTP method, headers, and body.
+    ///
+    /// # Parameters
+    ///
+    /// * `method`: HTTP method (GET, POST, etc.) to use.
+    /// * `header`: Optional custom HTTP headers.
+    /// * `body`: Optional request body.
+    /// * `output_dir`: Optional directory to save response data.
+    /// * `in_progress`: A callback function that is invoked as the test progresses.
+    ///
+    /// # Returns
+    /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`.
     pub async fn run<T>(
         &self,
         method: HttpMethod,
@@ -235,6 +262,19 @@ impl LoadTestRunner {
         .await
     }
 
+    /// Executes the load test using request bodies from a directory.
+    ///
+    /// # Parameters
+    ///
+    /// * `method`: HTTP method (POST, PUT, etc.) to use.
+    /// * `header`: Optional custom HTTP headers.
+    /// * `data_dir`: Directory containing files to be used as request bodies.
+    /// * `order`: Order in which to process files from the directory.
+    /// * `output_dir`: Optional directory to save response data.
+    /// * `in_progress`: A callback function that is invoked as the test progresses.
+    ///
+    /// # Returns
+    /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`.
     pub async fn run_from_dir<T>(
         &self,
         method: HttpMethod,
@@ -282,6 +322,18 @@ impl LoadTestRunner {
         .await
     }
 
+    /// Executes the load test using a request manifest file (JSON Lines format).
+    ///
+    /// # Parameters
+    ///
+    /// * `method`: HTTP method (POST, PUT, etc.) to use.
+    /// * `manifest_file`: Path to the manifest file.
+    /// * `order`: Order in which to process requests from the manifest.
+    /// * `output_dir`: Optional directory to save response data.
+    /// * `in_progress`: A callback function that is invoked as the test progresses.
+    ///
+    /// # Returns
+    /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`.
     pub async fn run_from_manifest<T>(
         &self,
         method: HttpMethod,
@@ -333,6 +385,16 @@ impl LoadTestRunner {
         .await
     }
 
+    /// Executes a single request for debugging purposes.
+    ///
+    /// # Parameters
+    ///
+    /// * `method`: HTTP method to use.
+    /// * `header`: Optional custom HTTP headers.
+    /// * `body`: Optional request body.
+    ///
+    /// # Returns
+    /// Returns a `Result` containing the `reqwest::Response`.
     pub async fn debug(
         &self,
         method: HttpMethod,
@@ -383,22 +445,16 @@ impl LoadTestRunner {
         Ok(res.error_for_status()?)
     }
 
-    /// Executes the load test with a request manifest file for debugging.
-    ///
-    /// This is the main method for running the test. It sends the configured number of requests
-    /// concurrently to the target URL. After each request completes, it invokes the `in_progress`
-    /// callback with the current, cumulative statistics.
+    /// Executes a single request from a manifest file for debugging.
     ///
     /// # Parameters
     ///
-    /// * `method`: HTTP method (GET, POST, etc.) to use.
-    /// * `manifest_file`: A manifest file.
-    /// * `order`: Order to process request from the `manifest_file`.
+    /// * `method`: HTTP method to use.
+    /// * `manifest_file`: Path to the manifest file.
+    /// * `order`: Order to select a request from the manifest.
     ///
     /// # Returns
-    ///
-    /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`
-    /// with the complete summary of the test run.
+    /// Returns a `Result` containing the `reqwest::Response`.
     pub async fn debug_from_manifest(
         &self,
         method: HttpMethod,
