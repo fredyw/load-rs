@@ -241,3 +241,23 @@ async fn test_user_agent() {
     let body = resp.text().await.unwrap();
     assert!(body.contains("\"user-agent\":\"custom-agent/1.0\""));
 }
+
+#[tokio::test]
+async fn debug_mtls_valid_certs() {
+    let test_server = common::run_server(common::HttpVersion::Http1)
+        .await
+        .unwrap();
+
+    let runner = LoadTestRunner::builder(format!("https://{}", test_server.addr), 1, 1)
+        .stats(Stats::Success)
+        .ca_cert("tests/tls/ca.crt")
+        .cert("tests/tls/client.crt")
+        .key("tests/tls/client.key")
+        .build()
+        .await
+        .unwrap();
+
+    let response = runner.debug(HttpMethod::Get, None, None).await.unwrap();
+
+    assert_eq!(response.status(), 200);
+}

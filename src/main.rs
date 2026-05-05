@@ -16,11 +16,11 @@ struct Args {
     url: String,
 
     /// Total number of requests to send.
-    #[arg(short = 'n', long)]
+    #[arg(short = 'n', long, default_value = "100")]
     requests: u32,
 
     /// Number of concurrent requests to run at a time.
-    #[arg(short = 'c', long)]
+    #[arg(short = 'c', long, default_value = "10")]
     concurrency: u32,
 
     /// HTTP method to use for the requests.
@@ -342,7 +342,13 @@ async fn debug(runner: &LoadTestRunner, args: &Args) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let mut builder = LoadTestRunner::builder(&args.url, args.requests, args.concurrency)
+    let (requests, concurrency) = if args.debug {
+        (1, 1)
+    } else {
+        (args.requests, args.concurrency)
+    };
+
+    let mut builder = LoadTestRunner::builder(&args.url, requests, concurrency)
         .stats(args.stats)
         .insecure(args.insecure);
 

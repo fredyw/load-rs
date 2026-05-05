@@ -237,6 +237,18 @@ fn debug_get() -> Result<()> {
 }
 
 #[test]
+fn debug_minimal_args() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args(["--debug", "https://mockhttp.org/get"]);
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("HTTP/2.0 200 OK"));
+
+    Ok(())
+}
+
+#[test]
 fn debug_head() -> Result<()> {
     let mut cmd = Command::cargo_bin("load-rs")?;
     cmd.args([
