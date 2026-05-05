@@ -35,6 +35,8 @@ pub struct LoadTestRunner {
     pub concurrency: u32,
     /// Specifies which requests to include in the statistics.
     pub stats: Stats,
+    /// Quiet mode: suppress progress updates.
+    pub quiet: bool,
     /// HTTP client.
     client: Client,
 }
@@ -60,8 +62,15 @@ impl LoadTestRunnerBuilder {
                 timeout: None,
                 user_agent: None,
                 proxy: None,
+                quiet: false,
             },
         }
+    }
+
+    /// Sets whether to suppress progress updates.
+    pub fn quiet(mut self, quiet: bool) -> Self {
+        self.config.quiet = quiet;
+        self
     }
 
     /// Sets which requests to include in the statistics.
@@ -210,6 +219,7 @@ impl LoadTestRunner {
             requests: config.requests,
             concurrency: config.concurrency,
             stats: config.stats,
+            quiet: config.quiet,
             client: builder.build()?,
         })
     }
@@ -847,22 +857,25 @@ impl LoadTestRunner {
                 }
             }
 
-            in_progress(LoadTestEvent::RequestFinished(req_result));
+            if !self.quiet {
+                in_progress(LoadTestEvent::RequestFinished(req_result));
 
-            if last_update.elapsed() >= update_interval {
-                result.elapsed = test_time.elapsed();
-                let elapsed_secs = result.elapsed.as_secs_f64();
-                if elapsed_secs > 0.0 {
-                    result.rps = result.completed as f64 / elapsed_secs;
+                if last_update.elapsed() >= update_interval {
+                    result.elapsed = test_time.elapsed();
+                    let elapsed_secs = result.elapsed.as_secs_f64();
+                    if elapsed_secs > 0.0 {
+                        result.rps = result.completed as f64 / elapsed_secs;
+                    }
+                    if result.completed > 0 {
+                        result.success_rate =
+                            (result.success as f64 / result.completed as f64) * 100.0;
+                        result.failure_rate =
+                            (result.failures as f64 / result.completed as f64) * 100.0;
+                    }
+                    result.update_percentiles();
+                    in_progress(LoadTestEvent::ProgressUpdate(&result));
+                    last_update = Instant::now();
                 }
-                if result.completed > 0 {
-                    result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
-                    result.failure_rate =
-                        (result.failures as f64 / result.completed as f64) * 100.0;
-                }
-                result.update_percentiles();
-                in_progress(LoadTestEvent::ProgressUpdate(&result));
-                last_update = Instant::now();
             }
         }
         result.elapsed = test_time.elapsed();

@@ -62,6 +62,7 @@ Options:
   -A, --user-agent <USER_AGENT>        Custom user agent
   -p, --proxy <PROXY>                  Proxy server URL
   -u, --unit <UNIT>                    Unit of measurement (seconds or milliseconds) [default: milliseconds]
+  -q, --quiet                          Quiet mode: suppress progress updates
   -h, --help                           Print help
   -V, --version                        Print version
 ```
@@ -140,6 +141,10 @@ The `-p` or `--proxy` option allows you to route requests through a proxy server
 #### Unit
 
 The `-u` or `--unit` option allows you to configure the unit of measurement used in the output for duration and latencies. Supported values are `seconds` and `milliseconds`. By default, it is in `milliseconds`.
+
+#### Quiet Mode
+
+The `-q` or `--quiet` option suppresses the real-time progress bar and updates during the test. This can slightly improve performance by reducing terminal I/O and local CPU overhead, and is useful for automation or when redirecting output to a file.
 
 #### Debugging
 

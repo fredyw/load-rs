@@ -94,6 +94,10 @@ struct Args {
     /// Unit of measurement (seconds or milliseconds).
     #[arg(short = 'u', long, default_value = "milliseconds")]
     unit: Unit,
+
+    /// Quiet mode: suppress progress updates.
+    #[arg(short = 'q', long)]
+    quiet: bool,
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -192,55 +196,91 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
 }
 
 async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
-    let pb = create_progress_bar(args.requests)?;
-    let result = if let Some(data_dir) = &args.data_dir {
-        runner
-            .run_from_dir(
-                args.method,
-                Some(to_header_map(&args.header)?),
-                data_dir,
-                args.order,
-                args.output_dir.as_deref(),
-                |event| {
-                    if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
-                        pb.set_message(format_progress_message(args, result));
-                        pb.set_position(result.completed as u64);
-                    }
-                },
-            )
-            .await?
-    } else if let Some(manifest_file) = &args.manifest_file {
-        runner
-            .run_from_manifest(
-                args.method,
-                manifest_file,
-                args.order,
-                args.output_dir.as_deref(),
-                |event| {
-                    if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
-                        pb.set_message(format_progress_message(args, result));
-                        pb.set_position(result.completed as u64);
-                    }
-                },
-            )
-            .await?
+    let result = if args.quiet {
+        if let Some(data_dir) = &args.data_dir {
+            runner
+                .run_from_dir(
+                    args.method,
+                    Some(to_header_map(&args.header)?),
+                    data_dir,
+                    args.order,
+                    args.output_dir.as_deref(),
+                    |_| {},
+                )
+                .await?
+        } else if let Some(manifest_file) = &args.manifest_file {
+            runner
+                .run_from_manifest(
+                    args.method,
+                    manifest_file,
+                    args.order,
+                    args.output_dir.as_deref(),
+                    |_| {},
+                )
+                .await?
+        } else {
+            runner
+                .run(
+                    args.method,
+                    Some(to_header_map(&args.header)?),
+                    Some(to_body(args)),
+                    args.output_dir.as_deref(),
+                    |_| {},
+                )
+                .await?
+        }
     } else {
-        runner
-            .run(
-                args.method,
-                Some(to_header_map(&args.header)?),
-                Some(to_body(args)),
-                args.output_dir.as_deref(),
-                |event| {
-                    if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
-                        pb.set_message(format_progress_message(args, result));
-                        pb.set_position(result.completed as u64);
-                    }
-                },
-            )
-            .await?
+        let pb = create_progress_bar(args.requests)?;
+        let result = if let Some(data_dir) = &args.data_dir {
+            runner
+                .run_from_dir(
+                    args.method,
+                    Some(to_header_map(&args.header)?),
+                    data_dir,
+                    args.order,
+                    args.output_dir.as_deref(),
+                    |event| {
+                        if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
+                            pb.set_message(format_progress_message(args, result));
+                            pb.set_position(result.completed as u64);
+                        }
+                    },
+                )
+                .await?
+        } else if let Some(manifest_file) = &args.manifest_file {
+            runner
+                .run_from_manifest(
+                    args.method,
+                    manifest_file,
+                    args.order,
+                    args.output_dir.as_deref(),
+                    |event| {
+                        if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
+                            pb.set_message(format_progress_message(args, result));
+                            pb.set_position(result.completed as u64);
+                        }
+                    },
+                )
+                .await?
+        } else {
+            runner
+                .run(
+                    args.method,
+                    Some(to_header_map(&args.header)?),
+                    Some(to_body(args)),
+                    args.output_dir.as_deref(),
+                    |event| {
+                        if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
+                            pb.set_message(format_progress_message(args, result));
+                            pb.set_position(result.completed as u64);
+                        }
+                    },
+                )
+                .await?
+        };
+        pb.finish_and_clear();
+        result
     };
-    pb.finish_and_clear();
     println!(
         "{} {} in {}",
         style("✓").green().bold(),
@@ -354,7 +394,8 @@ async fn main() -> Result<()> {
 
     let mut builder = LoadTestRunner::builder(&args.url, requests, concurrency)
         .stats(args.stats)
-        .insecure(args.insecure);
+        .insecure(args.insecure)
+        .quiet(args.quiet);
 
     if let Some(ca_cert) = &args.ca_cert {
         builder = builder.ca_cert(ca_cert);

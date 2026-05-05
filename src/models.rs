@@ -309,6 +309,8 @@ pub struct LoadTestConfig {
     pub user_agent: Option<String>,
     /// Proxy server URL.
     pub proxy: Option<String>,
+    /// Quiet mode: suppress progress updates.
+    pub quiet: bool,
 }
 
 /// Events emitted during the load test.
