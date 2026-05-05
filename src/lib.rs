@@ -64,9 +64,8 @@ pub struct LoadTestResult {
     /// Cumulative duration of all successful requests combined.
     pub total_duration: Duration,
 
-    /// A collection of individual response durations for each successful request.
-    /// This is used to calculate percentiles.
-    pub durations: Vec<Duration>,
+    /// A histogram of individual response durations (in microseconds) for each successful request.
+    pub durations: hdrhistogram::Histogram<u64>,
 
     /// The average response time for successful requests.
     pub avg: Duration,
@@ -86,7 +85,13 @@ pub struct LoadTestResult {
     /// The 95th percentile response time for successful requests.
     pub p95: Duration,
 
-    /// Total wall clock time the test took.
+    /// The 99th percentile response time for successful requests.
+    pub p99: Duration,
+
+    /// The 99.9th percentile response time for successful requests.
+    pub p99_9: Duration,
+
+    /// Total time elapsed for the load test.
     pub elapsed: Duration,
 
     /// Total requests per second.
@@ -184,23 +189,36 @@ pub struct ResponseData {
 }
 
 impl LoadTestResult {
-    fn new(capacity: usize) -> Self {
+    fn new() -> Self {
         LoadTestResult {
             success: 0,
             failures: 0,
             completed: 0,
             total_duration: Duration::default(),
-            durations: Vec::with_capacity(capacity),
+            durations: hdrhistogram::Histogram::<u64>::new(3).unwrap(),
             avg: Duration::default(),
             min: Duration::default(),
             max: Duration::default(),
             p50: Duration::default(),
             p90: Duration::default(),
             p95: Duration::default(),
+            p99: Duration::default(),
+            p99_9: Duration::default(),
             elapsed: Duration::default(),
             rps: 0.0,
             success_rate: 0.0,
             failure_rate: 0.0,
+        }
+    }
+
+    fn update_percentiles(&mut self) {
+        if !self.durations.is_empty() {
+            self.p50 = Duration::from_micros(self.durations.value_at_percentile(50.0));
+            self.p90 = Duration::from_micros(self.durations.value_at_percentile(90.0));
+            self.p95 = Duration::from_micros(self.durations.value_at_percentile(95.0));
+            self.p99 = Duration::from_micros(self.durations.value_at_percentile(99.0));
+            self.p99_9 = Duration::from_micros(self.durations.value_at_percentile(99.9));
+            self.avg = self.total_duration / self.durations.len() as u32;
         }
     }
 }
@@ -377,13 +395,11 @@ impl LoadTestRunner {
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
         let base_req = self.build_request(method, (*headers).clone(), (*body).clone())?;
-
         for _ in 0..self.concurrency {
             let tx = tx.clone();
             let runner = Arc::clone(&runner);
             let counter = Arc::clone(&counter);
             let base_req = base_req.try_clone().unwrap();
-
             tokio::spawn(async move {
                 loop {
                     let i = counter.fetch_add(1, Ordering::Relaxed);
@@ -462,13 +478,11 @@ impl LoadTestRunner {
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
-
         for _ in 0..self.concurrency {
             let tx = tx.clone();
             let reqs = Arc::clone(&reqs);
             let runner = Arc::clone(&runner);
             let counter = Arc::clone(&counter);
-
             tokio::spawn(async move {
                 loop {
                     let i = counter.fetch_add(1, Ordering::Relaxed);
@@ -846,7 +860,7 @@ impl LoadTestRunner {
     where
         F: Fn(&LoadTestResult),
     {
-        let mut result = LoadTestResult::new(self.requests as usize);
+        let mut result = LoadTestResult::new();
         if let Some(output_dir) = output_dir {
             fs::create_dir_all(output_dir).await?;
         }
@@ -936,6 +950,7 @@ impl LoadTestRunner {
                     result.failure_rate =
                         (result.failures as f64 / result.completed as f64) * 100.0;
                 }
+                result.update_percentiles();
                 in_progress(&result);
                 last_update = Instant::now();
             }
@@ -949,19 +964,10 @@ impl LoadTestRunner {
             result.success_rate = (result.success as f64 / result.completed as f64) * 100.0;
             result.failure_rate = (result.failures as f64 / result.completed as f64) * 100.0;
         }
+        result.update_percentiles();
         in_progress(&result);
         // Wait for all file writing tasks to complete.
         while file_tasks.join_next().await.is_some() {}
-        if let [p50, p90, p95] =
-            Self::get_quantiles(&mut result.durations, &[0.5, 0.90, 0.95]).as_slice()
-        {
-            result.p50 = *p50;
-            result.p90 = *p90;
-            result.p95 = *p95;
-        }
-        if !result.durations.is_empty() {
-            result.avg = result.total_duration / result.durations.len() as u32;
-        }
         result.elapsed = test_time.elapsed();
         let elapsed_secs = result.elapsed.as_secs_f64();
         if elapsed_secs > 0.0 {
@@ -975,7 +981,7 @@ impl LoadTestRunner {
     }
 
     fn update_stats(result: &mut LoadTestResult, duration: Duration) {
-        result.durations.push(duration);
+        let _ = result.durations.record(duration.as_micros() as u64);
         result.total_duration += duration;
         result.min = if result.min == Duration::default() {
             duration
@@ -983,17 +989,6 @@ impl LoadTestRunner {
             result.min.min(duration)
         };
         result.max = result.max.max(duration);
-    }
-
-    fn get_quantiles(durations: &mut [Duration], quantiles: &[f64]) -> Vec<Duration> {
-        durations.sort();
-        quantiles
-            .iter()
-            .map(|quantile| {
-                let index = (durations.len() as f64 * quantile) as usize;
-                durations.get(index).cloned().unwrap_or_default()
-            })
-            .collect()
     }
 
     fn get_output_file(
@@ -1295,18 +1290,6 @@ mod tests {
             err.to_string(),
             "Data file 'tests/test_requests' does not exist or is not a file"
         );
-    }
-
-    #[test]
-    fn get_quantiles_succeeds() {
-        let mut durations: Vec<Duration> = (1..=10).map(Duration::from_secs).collect();
-        if let [p50, p90, p95] =
-            LoadTestRunner::get_quantiles(&mut durations, &[0.5, 0.9, 0.95]).as_slice()
-        {
-            assert_eq!(*p50, Duration::from_secs(6));
-            assert_eq!(*p90, Duration::from_secs(10));
-            assert_eq!(*p95, Duration::from_secs(10));
-        }
     }
 
     #[test]

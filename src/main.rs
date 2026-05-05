@@ -134,6 +134,49 @@ fn create_progress_bar(len: u32) -> Result<ProgressBar> {
     Ok(pb)
 }
 
+fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> String {
+    format!(
+        concat!(
+            "Overview:\n",
+            "  URL: {}\n",
+            "  Concurrency: {}\n",
+            "  RPS: {}\n",
+            "  Duration: {}\n\n",
+            "Requests:\n",
+            "  Total: {}\n",
+            "  Success: {} ({:.1}%)\n",
+            "  Failures: {} ({:.1}%)\n\n",
+            "Latency (Filter: {}):\n",
+            "  Avg: {}\n",
+            "  Min: {}\n",
+            "  Max: {}\n",
+            "  P50: {}\n",
+            "  P90: {}\n",
+            "  P95: {}",
+        ),
+        style(&args.url).cyan().underlined(),
+        style(args.concurrency).yellow(),
+        style(format!("{:.1}", result.rps)).cyan(),
+        style(format_duration(result.elapsed, args.unit)).yellow(),
+        style(result.completed).blue(),
+        style(result.success).green(),
+        result.success_rate,
+        style(result.failures).red(),
+        result.failure_rate,
+        match args.stats {
+            load_rs::Stats::Success => style(args.stats).green(),
+            load_rs::Stats::Error => style(args.stats).red(),
+            load_rs::Stats::All => style(args.stats).blue(),
+        },
+        style(format_duration(result.avg, args.unit)).yellow(),
+        style(format_duration(result.min, args.unit)).yellow(),
+        style(format_duration(result.max, args.unit)).yellow(),
+        style(format_duration(result.p50, args.unit)).yellow(),
+        style(format_duration(result.p90, args.unit)).yellow(),
+        style(format_duration(result.p95, args.unit)).yellow(),
+    )
+}
+
 async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
     let pb = create_progress_bar(args.requests)?;
     let result = if let Some(data_dir) = &args.data_dir {
@@ -145,25 +188,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.order,
                 args.output_dir.as_deref(),
                 |result| {
-                    pb.set_message(format!(
-                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {}\n  Max: {}",
-                        style(&args.url).cyan().underlined(),
-                        style(args.concurrency).yellow(),
-                        style(format!("{:.1}", result.rps)).cyan(),
-                        style(format_duration(result.elapsed, args.unit)).yellow(),
-                        style(result.completed).blue(),
-                        style(result.success).green(),
-                        result.success_rate,
-                        style(result.failures).red(),
-                        result.failure_rate,
-                        match args.stats {
-                            load_rs::Stats::Success => style(args.stats).green(),
-                            load_rs::Stats::Error => style(args.stats).red(),
-                            load_rs::Stats::All => style(args.stats).blue(),
-                        },
-                        style(format_duration(result.min, args.unit)).yellow(),
-                        style(format_duration(result.max, args.unit)).yellow(),
-                    ));
+                    pb.set_message(format_progress_message(args, result));
                     pb.set_position(result.completed as u64);
                 },
             )
@@ -176,25 +201,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 args.order,
                 args.output_dir.as_deref(),
                 |result| {
-                    pb.set_message(format!(
-                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {}\n  Max: {}",
-                        style(&args.url).cyan().underlined(),
-                        style(args.concurrency).yellow(),
-                        style(format!("{:.1}", result.rps)).cyan(),
-                        style(format_duration(result.elapsed, args.unit)).yellow(),
-                        style(result.completed).blue(),
-                        style(result.success).green(),
-                        result.success_rate,
-                        style(result.failures).red(),
-                        result.failure_rate,
-                        match args.stats {
-                            load_rs::Stats::Success => style(args.stats).green(),
-                            load_rs::Stats::Error => style(args.stats).red(),
-                            load_rs::Stats::All => style(args.stats).blue(),
-                        },
-                        style(format_duration(result.min, args.unit)).yellow(),
-                        style(format_duration(result.max, args.unit)).yellow(),
-                    ));
+                    pb.set_message(format_progress_message(args, result));
                     pb.set_position(result.completed as u64);
                 },
             )
@@ -207,25 +214,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 Some(to_body(args)),
                 args.output_dir.as_deref(),
                 |result| {
-                    pb.set_message(format!(
-                        "Overview:\n  URL: {}\n  Concurrency: {}\n  RPS: {}\n  Duration: {}\n\nRequests:\n  Total: {}\n  Success: {} ({:.1}%)\n  Failures: {} ({:.1}%)\n\nLatency (Filter: {}):\n  Min: {}\n  Max: {}",
-                        style(&args.url).cyan().underlined(),
-                        style(args.concurrency).yellow(),
-                        style(format!("{:.1}", result.rps)).cyan(),
-                        style(format_duration(result.elapsed, args.unit)).yellow(),
-                        style(result.completed).blue(),
-                        style(result.success).green(),
-                        result.success_rate,
-                        style(result.failures).red(),
-                        result.failure_rate,
-                        match args.stats {
-                            load_rs::Stats::Success => style(args.stats).green(),
-                            load_rs::Stats::Error => style(args.stats).red(),
-                            load_rs::Stats::All => style(args.stats).blue(),
-                        },
-                        style(format_duration(result.min, args.unit)).yellow(),
-                        style(format_duration(result.max, args.unit)).yellow(),
-                    ));
+                    pb.set_message(format_progress_message(args, result));
                     pb.set_position(result.completed as u64);
                 },
             )
