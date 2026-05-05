@@ -127,7 +127,7 @@ fn create_progress_bar(len: u32) -> Result<ProgressBar> {
     let pb = ProgressBar::new(len as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("[{elapsed_precise:.yellow}] [{bar:40.cyan/blue}] {pos:.blue}/{len:.blue} ({percent:.blue}%)\n{msg}")?
+            .template("[{elapsed_precise:.yellow}] [{bar:40.cyan/blue}] {pos:.blue}/{len:.blue} ({percent:.blue}%)\n\n{msg}")?
             .progress_chars("#>-"),
     );
     pb.set_position(0);
@@ -137,16 +137,16 @@ fn create_progress_bar(len: u32) -> Result<ProgressBar> {
 fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> String {
     format!(
         concat!(
-            "Overview:\n",
+            "{}\n",
             "  URL: {}\n",
             "  Concurrency: {}\n",
             "  RPS: {}\n",
             "  Duration: {}\n\n",
-            "Requests:\n",
+            "{}\n",
             "  Total: {}\n",
             "  Success: {} ({:.1}%)\n",
             "  Failures: {} ({:.1}%)\n\n",
-            "Latency (Filter: {}):\n",
+            "{} (Filter: {}):\n",
             "  Avg: {}\n",
             "  Min: {}\n",
             "  Max: {}\n",
@@ -155,15 +155,18 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
             "  P95: {}\n",
             "  P99: {}",
         ),
+        style("Overview:").bold(),
         style(&args.url).cyan().underlined(),
         style(args.concurrency).yellow(),
         style(format!("{:.1}", result.rps)).cyan(),
         style(format_duration(result.elapsed, args.unit)).yellow(),
+        style("Requests:").bold(),
         style(result.completed).blue(),
         style(result.success).green(),
         result.success_rate,
         style(result.failures).red(),
         result.failure_rate,
+        style("Latency").bold(),
         match args.stats {
             load_rs::Stats::Success => style(args.stats).green(),
             load_rs::Stats::Error => style(args.stats).red(),
@@ -223,6 +226,13 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
             .await?
     };
     pb.finish_and_clear();
+    println!(
+        "{} {} in {}",
+        style("✓").green().bold(),
+        style("Test Completed").bold(),
+        style(format_duration(result.elapsed, args.unit)).yellow()
+    );
+    println!();
 
     println!("{}", style("Overview:").bold());
     println!("  URL: {}", style(&args.url).cyan().underlined());
@@ -278,6 +288,10 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
     println!(
         "  P95: {}",
         style(format_duration(result.p95, args.unit)).yellow()
+    );
+    println!(
+        "  P99: {}",
+        style(format_duration(result.p99, args.unit)).yellow()
     );
     Ok(())
 }
