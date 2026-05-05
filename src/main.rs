@@ -104,11 +104,11 @@ struct Args {
     quiet: bool,
 
     /// Disables HTTP keep-alive.
-    #[arg(long)]
+    #[arg(short = 'K', long)]
     disable_keepalive: bool,
 
     /// Output results in JSON format.
-    #[arg(long)]
+    #[arg(short = 'j', long)]
     json: bool,
 }
 

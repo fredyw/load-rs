@@ -64,8 +64,8 @@ Options:
   -p, --proxy <PROXY>                  Proxy server URL
   -u, --unit <UNIT>                    Unit of measurement (seconds or milliseconds) [default: milliseconds]
   -q, --quiet                          Quiet mode: suppress progress updates
-      --disable-keepalive              Disables HTTP keep-alive
-      --json                           Output results in JSON format
+  -K, --disable-keepalive              Disables HTTP keep-alive
+  -j, --json                           Output results in JSON format
   -h, --help                           Print help
   -V, --version                        Print version
 ```
