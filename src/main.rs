@@ -16,8 +16,12 @@ struct Args {
     url: String,
 
     /// Total number of requests to send.
-    #[arg(short = 'n', long, default_value = "100")]
-    requests: u32,
+    #[arg(short = 'n', long, required_unless_present = "duration")]
+    requests: Option<u32>,
+
+    /// Maximum duration of the load test (e.g., 10s, 1m).
+    #[arg(short = 'z', long)]
+    duration: Option<String>,
 
     /// Number of concurrent requests to run at a time.
     #[arg(short = 'c', long, default_value = "10")]
@@ -242,7 +246,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 .await?
         }
     } else {
-        let pb = create_progress_bar(args.requests)?;
+        let pb = create_progress_bar(runner.requests)?;
         let result = if let Some(data_dir) = &args.data_dir {
             runner
                 .run_from_dir(
@@ -407,7 +411,7 @@ async fn main() -> Result<()> {
     let (requests, concurrency) = if args.debug {
         (1, 1)
     } else {
-        (args.requests, args.concurrency)
+        (args.requests.unwrap_or(u32::MAX), args.concurrency)
     };
 
     let mut builder = LoadTestRunner::builder(&args.url, requests, concurrency)
@@ -435,6 +439,9 @@ async fn main() -> Result<()> {
     if let Some(proxy) = &args.proxy {
         builder = builder.proxy(proxy);
     }
+    if let Some(duration_str) = &args.duration {
+        builder = builder.duration(parse_duration(duration_str)?);
+    }
 
     let runner = builder.build().await?;
     if args.debug {
@@ -443,6 +450,23 @@ async fn main() -> Result<()> {
         run(&runner, &args).await?;
     }
     Ok(())
+}
+
+fn parse_duration(s: &str) -> Result<std::time::Duration> {
+    let s = s.trim().to_lowercase();
+    if s.ends_with('s') {
+        let n: u64 = s[..s.len() - 1].parse()?;
+        Ok(std::time::Duration::from_secs(n))
+    } else if s.ends_with('m') {
+        let n: u64 = s[..s.len() - 1].parse()?;
+        Ok(std::time::Duration::from_secs(n * 60))
+    } else if s.ends_with('h') {
+        let n: u64 = s[..s.len() - 1].parse()?;
+        Ok(std::time::Duration::from_secs(n * 3600))
+    } else {
+        let n: u64 = s.parse()?;
+        Ok(std::time::Duration::from_secs(n))
+    }
 }
 
 #[cfg(test)]

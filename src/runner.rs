@@ -38,6 +38,8 @@ pub struct LoadTestRunner {
     pub quiet: bool,
     /// Specifies what to save in the response output.
     pub save_mode: crate::models::SaveMode,
+    /// Duration limit for the load test.
+    pub duration: Option<Duration>,
     /// HTTP client.
     client: Client,
 }
@@ -66,6 +68,7 @@ impl LoadTestRunnerBuilder {
                 quiet: false,
                 save_mode: crate::models::SaveMode::All,
                 disable_keepalive: false,
+                duration: None,
             },
         }
     }
@@ -133,6 +136,12 @@ impl LoadTestRunnerBuilder {
     /// Disables HTTP keep-alive.
     pub fn disable_keepalive(mut self, disable: bool) -> Self {
         self.config.disable_keepalive = disable;
+        self
+    }
+
+    /// Sets the maximum duration of the load test.
+    pub fn duration(mut self, duration: Duration) -> Self {
+        self.config.duration = Some(duration);
         self
     }
 
@@ -244,6 +253,7 @@ impl LoadTestRunner {
             stats: config.stats,
             quiet: config.quiet,
             save_mode: config.save_mode,
+            duration: config.duration,
             client: builder.build()?,
         })
     }
@@ -297,6 +307,7 @@ impl LoadTestRunner {
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
+        let start_time = Instant::now();
         for _ in 0..self.concurrency {
             let tx = tx.clone();
             let runner = Arc::clone(&runner);
@@ -307,6 +318,11 @@ impl LoadTestRunner {
                     let i = counter.fetch_add(1, Ordering::Relaxed);
                     if i >= runner.requests as u64 {
                         break;
+                    }
+                    if let Some(duration) = runner.duration {
+                        if start_time.elapsed() >= duration {
+                            break;
+                        }
                     }
                     let req_gen_result = generator.generate(i);
                     let result = match req_gen_result {

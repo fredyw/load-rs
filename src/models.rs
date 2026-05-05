@@ -354,6 +354,8 @@ pub struct LoadTestConfig {
     pub save_mode: SaveMode,
     /// Disables HTTP keep-alive.
     pub disable_keepalive: bool,
+    /// Maximum duration of the load test.
+    pub duration: Option<Duration>,
 }
 
 /// Events emitted during the load test.

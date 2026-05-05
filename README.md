@@ -43,6 +43,7 @@ Arguments:
 
 Options:
   -n, --requests <REQUESTS>            Total number of requests to send
+  -z, --duration <DURATION>            Maximum duration of the load test (e.g., 10s, 1m)
   -c, --concurrency <CONCURRENCY>      Number of concurrent requests to run at a time
   -X, --method <METHOD>                HTTP method to use for the requests [default: get]
   -H, --header <HEADER>                Custom HTTP header(s) in "key: value" format. Can be repeated
@@ -140,6 +141,12 @@ values are supported:
 - `success`: Only include successful requests in the statistics.
 - `error`: Only include failed requests in the statistics.
 - `all` (default): Include all requests (successful and failed) in the statistics.
+
+#### Duration-based Testing
+
+The `-z` or `--duration` flag allows you to run the load test for a specific amount of time instead of a fixed number of requests. You can specify the duration in seconds (e.g., `30`, `30s`), minutes (e.g., `5m`), or hours (e.g., `1h`).
+
+If both `--requests` and `--duration` are provided, the test will stop whichever limit is reached first.
 
 #### Timeout
 

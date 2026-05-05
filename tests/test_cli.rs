@@ -599,3 +599,26 @@ fn run_json_output() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn run_duration_based() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args([
+        "-z",
+        "2s",
+        "-c",
+        "2",
+        "-X",
+        "GET",
+        "https://mockhttp.org/get",
+    ]);
+
+    let now = std::time::Instant::now();
+    cmd.assert().success();
+    let elapsed = now.elapsed();
+
+    // Should take around 2 seconds (plus some overhead)
+    assert!(elapsed >= std::time::Duration::from_secs(2));
+
+    Ok(())
+}
