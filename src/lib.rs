@@ -24,16 +24,12 @@ use tokio::task::JoinSet;
 pub struct LoadTestRunner {
     /// Target URL to send requests to.
     pub url: String,
-
     /// Total number of requests to send.
     pub requests: u32,
-
     /// Number of concurrent requests to run at a time.
     pub concurrency: u32,
-
     /// Specifies which requests to include in the statistics.
     pub stats: Stats,
-
     /// HTTP client.
     client: Client,
 }
@@ -54,49 +50,34 @@ pub enum HttpMethod {
 pub struct LoadTestResult {
     ///  Total number of successful requests.
     pub success: u32,
-
     /// Total number of failed requests.
     pub failures: u32,
-
     /// Total number of completed requests (success + failures).
     pub completed: u32,
-
     /// Cumulative duration of all successful requests combined.
     pub total_duration: Duration,
-
     /// A histogram of individual response durations (in microseconds) for each successful request.
     pub durations: hdrhistogram::Histogram<u64>,
-
     /// The average response time for successful requests.
     pub avg: Duration,
-
     /// The minimum response time for successful requests.
     pub min: Duration,
-
     /// The maximum response time for successful requests.
     pub max: Duration,
-
     /// The 50th percentile (median) response time for successful requests.
     pub p50: Duration,
-
     /// The 90th percentile response time for successful requests.
     pub p90: Duration,
-
     /// The 95th percentile response time for successful requests.
     pub p95: Duration,
-
     /// The 99th percentile response time for successful requests.
     pub p99: Duration,
-
     /// Total time elapsed for the load test.
     pub elapsed: Duration,
-
     /// Total requests per second.
     pub rps: f64,
-
     /// Successful requests percentage.
     pub success_rate: f64,
-
     /// Failed requests percentage.
     pub failure_rate: f64,
 }
@@ -225,7 +206,6 @@ impl LoadTestResult {
 pub enum Body {
     /// The request body is provided directly as an in-memory byte slice.
     Data(Bytes),
-
     /// The request body will be read from a single specified file.
     DataFile(PathBuf),
 }
@@ -235,7 +215,6 @@ pub enum Body {
 pub enum Order {
     /// Process files in alphabetical order (default).
     Sequential,
-
     /// Process files in a random order.
     Random,
 }
@@ -245,10 +224,8 @@ pub enum Order {
 pub enum Stats {
     /// Only include successful requests in the statistics.
     Success,
-
     /// Only include failed requests in the statistics.
     Error,
-
     /// Include all requests (successful and failed) in the statistics.
     All,
 }
@@ -262,10 +239,55 @@ struct RequestTemplate {
     binary_body: Option<String>,
 }
 
+/// The raw result of an individual request.
+#[derive(Debug, Clone)]
+pub struct RequestResult {
+    /// The iteration number of the request.
+    pub iteration: u64,
+    /// The time taken to complete the request.
+    pub duration: Duration,
+    /// Whether the request was successful.
+    pub success: bool,
+    /// The HTTP status code returned, if any.
+    pub status_code: Option<reqwest::StatusCode>,
+    /// The error message, if the request failed.
+    pub error: Option<String>,
+}
+
+/// Events emitted during the load test.
+pub enum LoadTestEvent<'a> {
+    /// Emitted when an individual request finishes.
+    RequestFinished(RequestResult),
+    /// Emitted periodically with aggregated statistics.
+    ProgressUpdate(&'a LoadTestResult),
+}
+
+/// A trait for generating requests dynamically.
+pub trait RequestGenerator: Send + Sync {
+    /// Generates a request for the given iteration.
+    ///
+    /// # Returns
+    /// A tuple containing the `reqwest::Request` and an optional base file name
+    /// for saving the response body.
+    fn generate(&self, iteration: u64) -> Result<(reqwest::Request, Option<OsString>)>;
+}
+
+impl<F> RequestGenerator for F
+where
+    F: Fn(u64) -> Result<(reqwest::Request, Option<OsString>)> + Send + Sync,
+{
+    fn generate(&self, iteration: u64) -> Result<(reqwest::Request, Option<OsString>)> {
+        self(iteration)
+    }
+}
+
 enum WorkerResult {
     StatsOnly {
         success: bool,
         duration: Duration,
+        iteration: u64,
+        status_code: Option<reqwest::StatusCode>,
+        error: Option<String>,
     },
     WithResponse {
         res: Result<ResponseData>,
@@ -372,37 +394,48 @@ impl LoadTestRunner {
     ///
     /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`
     /// with the complete summary of the test run.
-    pub async fn run<T>(
+    /// Executes the load test using a custom request generator.
+    pub async fn run_with_generator<G, T>(
         &self,
-        method: HttpMethod,
-        header: Option<HeaderMap>,
-        body: Option<Body>,
+        generator: G,
         output_dir: Option<&Path>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
-        T: Fn(&LoadTestResult),
+        G: RequestGenerator + 'static,
+        T: Fn(LoadTestEvent),
     {
-        let body = Arc::new(Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?);
-        let headers = Arc::new(header.unwrap_or_default());
+        let generator = Arc::new(generator);
         let save_response = output_dir.is_some();
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
-        let base_req = self.build_request(method, (*headers).clone(), (*body).clone())?;
         for _ in 0..self.concurrency {
             let tx = tx.clone();
             let runner = Arc::clone(&runner);
             let counter = Arc::clone(&counter);
-            let base_req = base_req.try_clone().unwrap();
+            let generator = Arc::clone(&generator);
             tokio::spawn(async move {
                 loop {
                     let i = counter.fetch_add(1, Ordering::Relaxed);
                     if i >= runner.requests as u64 {
                         break;
                     }
-                    let req = base_req.try_clone().unwrap();
-                    let result = runner.timed_request(req, i, None, save_response).await;
+                    let req_gen_result = generator.generate(i);
+                    let result = match req_gen_result {
+                        Ok((req, base_file_name)) => {
+                            runner
+                                .timed_request(req, i, base_file_name, save_response)
+                                .await
+                        }
+                        Err(e) => WorkerResult::StatsOnly {
+                            success: false,
+                            duration: Duration::default(),
+                            iteration: i,
+                            status_code: None,
+                            error: Some(e.to_string()),
+                        },
+                    };
                     if tx.send(result).await.is_err() {
                         break;
                     }
@@ -413,29 +446,29 @@ impl LoadTestRunner {
         self.process_results(rx, in_progress, output_dir).await
     }
 
-    /// Executes the load test with request bodies from files in a directory and streams progress
-    /// updates via a callback.
-    ///
-    /// This is the main method for running the test. It sends the configured number of requests
-    /// concurrently to the target URL. After each request completes, it invokes the `in_progress`
-    /// callback with the current, cumulative statistics.
-    ///
-    /// # Parameters
-    ///
-    /// * `method`: HTTP method (GET, POST, etc.) to use.
-    /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
-    ///   each request.
-    /// * `data_dir`: Directory of files to use as request bodies.
-    /// * `order`: Order to process files from the `data_dir`.
-    /// * `output_dir`: Directory to save responses to.
-    /// * `in_progress`: A callback function that is invoked after each request completes.
-    ///   It receives a reference to the `LoadTestResult` struct, allowing for real-time progress
-    ///   reporting.
-    ///
-    /// # Returns
-    ///
-    /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`
-    /// with the complete summary of the test run.
+    pub async fn run<T>(
+        &self,
+        method: HttpMethod,
+        header: Option<HeaderMap>,
+        body: Option<Body>,
+        output_dir: Option<&Path>,
+        in_progress: T,
+    ) -> Result<LoadTestResult>
+    where
+        T: Fn(LoadTestEvent),
+    {
+        let body = Arc::new(Self::get_data(body.unwrap_or(Body::Data(Bytes::new()))).await?);
+        let headers = Arc::new(header.unwrap_or_default());
+        let base_req = self.build_request(method, (*headers).clone(), (*body).clone())?;
+
+        self.run_with_generator(
+            move |_| Ok((base_req.try_clone().unwrap(), None)),
+            output_dir,
+            in_progress,
+        )
+        .await
+    }
+
     pub async fn run_from_dir<T>(
         &self,
         method: HttpMethod,
@@ -446,23 +479,21 @@ impl LoadTestRunner {
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
-        T: Fn(&LoadTestResult),
+        T: Fn(LoadTestEvent),
     {
         if method == HttpMethod::Get || method == HttpMethod::Head {
             bail!("HTTP method '{:?}' not supported", method);
         }
         let mut file_names = Self::get_file_names(data_dir).await?;
-        // Sort the file names to make it deterministic.
         file_names.sort();
         let mut bodies = Vec::new();
         for path in &file_names {
-            let body = fs::read(path).await?;
+            let body = tokio::fs::read(path).await?;
             bodies.push((
                 Arc::new(Bytes::from(body)),
                 path.file_stem().map(|f| f.to_owned()),
             ));
         }
-        let save_response = output_dir.is_some();
         let mut reqs = Vec::new();
         for (body, base_file_name) in bodies.iter() {
             let req =
@@ -470,61 +501,21 @@ impl LoadTestRunner {
             reqs.push((req, base_file_name.clone()));
         }
         let reqs = Arc::new(reqs);
-        let (tx, rx) = mpsc::channel(self.concurrency as usize);
-        let runner = Arc::new(self.clone());
-        let counter = Arc::new(AtomicU64::new(0));
-        for _ in 0..self.concurrency {
-            let tx = tx.clone();
-            let reqs = Arc::clone(&reqs);
-            let runner = Arc::clone(&runner);
-            let counter = Arc::clone(&counter);
-            tokio::spawn(async move {
-                loop {
-                    let i = counter.fetch_add(1, Ordering::Relaxed);
-                    if i >= runner.requests as u64 {
-                        break;
-                    }
-                    let index = match order {
-                        Order::Sequential => i as usize % reqs.len(),
-                        Order::Random => rand::random_range(0..reqs.len()),
-                    };
-                    let (req, base_file_name) = &reqs[index];
-                    let req = req.try_clone().unwrap();
-                    let base_file_name = base_file_name.clone();
-                    let result = runner
-                        .timed_request(req, i, base_file_name, save_response)
-                        .await;
-                    if tx.send(result).await.is_err() {
-                        break;
-                    }
-                }
-            });
-        }
-        drop(tx);
-        self.process_results(rx, in_progress, output_dir).await
+        self.run_with_generator(
+            move |iteration| {
+                let index = match order {
+                    Order::Sequential => iteration as usize % reqs.len(),
+                    Order::Random => rand::random_range(0..reqs.len()),
+                };
+                let (req, base_file_name) = &reqs[index];
+                Ok((req.try_clone().unwrap(), base_file_name.clone()))
+            },
+            output_dir,
+            in_progress,
+        )
+        .await
     }
 
-    /// Executes the load test with a request manifest file and streams progress updates via a
-    /// callback.
-    ///
-    /// This is the main method for running the test. It sends the configured number of requests
-    /// concurrently to the target URL. After each request completes, it invokes the `in_progress`
-    /// callback with the current, cumulative statistics.
-    ///
-    /// # Parameters
-    ///
-    /// * `method`: HTTP method (GET, POST, etc.) to use.
-    /// * `manifest_file`: A manifest file.
-    /// * `order`: Order to process request from the `manifest_file`.
-    /// * `output_dir`: Directory to save responses to.
-    /// * `in_progress`: A callback function that is invoked after each request completes.
-    ///   It receives a reference to the `LoadTestResult` struct, allowing for real-time progress
-    ///   reporting.
-    ///
-    /// # Returns
-    ///
-    /// Upon completion of all requests, it returns a `Result` containing the final `LoadTestResult`
-    /// with the complete summary of the test run.
     pub async fn run_from_manifest<T>(
         &self,
         method: HttpMethod,
@@ -534,11 +525,11 @@ impl LoadTestRunner {
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
-        T: Fn(&LoadTestResult),
+        T: Fn(LoadTestEvent),
     {
-        let file = File::open(manifest_file).await?;
-        let reader = BufReader::new(file);
-        let mut lines = reader.lines();
+        let file = tokio::fs::File::open(manifest_file).await?;
+        let reader = tokio::io::BufReader::new(file);
+        let mut lines = tokio::io::AsyncBufReadExt::lines(reader);
         let mut templates = Vec::new();
         while let Some(line) = lines.next_line().await? {
             let template: RequestTemplate = serde_json::from_str(&line)?;
@@ -555,56 +546,27 @@ impl LoadTestRunner {
             };
             templates.push((Arc::new(headers), Arc::new(body)));
         }
-        let save_response = output_dir.is_some();
         let mut reqs = Vec::new();
         for (headers, body) in templates.iter() {
             let req = self.build_request(method, (**headers).clone(), (**body).clone())?;
             reqs.push(req);
         }
         let reqs = Arc::new(reqs);
-        let (tx, rx) = mpsc::channel(self.concurrency as usize);
-        let runner = Arc::new(self.clone());
-        let counter = Arc::new(AtomicU64::new(0));
-        for _ in 0..self.concurrency {
-            let tx = tx.clone();
-            let reqs = Arc::clone(&reqs);
-            let runner = Arc::clone(&runner);
-            let counter = Arc::clone(&counter);
-            tokio::spawn(async move {
-                loop {
-                    let i = counter.fetch_add(1, Ordering::Relaxed);
-                    if i >= runner.requests as u64 {
-                        break;
-                    }
-                    let index = match order {
-                        Order::Sequential => i as usize % reqs.len(),
-                        Order::Random => rand::random_range(0..reqs.len()),
-                    };
-                    let req = reqs[index].try_clone().unwrap();
-                    let result = runner.timed_request(req, i, None, save_response).await;
-                    if tx.send(result).await.is_err() {
-                        break;
-                    }
-                }
-            });
-        }
-        drop(tx);
-        self.process_results(rx, in_progress, output_dir).await
+        self.run_with_generator(
+            move |iteration| {
+                let index = match order {
+                    Order::Sequential => iteration as usize % reqs.len(),
+                    Order::Random => rand::random_range(0..reqs.len()),
+                };
+                let req = &reqs[index];
+                Ok((req.try_clone().unwrap(), None))
+            },
+            output_dir,
+            in_progress,
+        )
+        .await
     }
 
-    /// Executes a single request for debugging.
-    ///
-    /// # Parameters
-    ///
-    /// * `method`: HTTP method (GET, POST, etc.) to use.
-    /// * `header`: A `reqwest::header::HeaderMap` containing custom HTTP headers to be sent with
-    ///   each request.
-    /// * `body`: Request body. It can be in-memory byte slice or a file that contains a request
-    ///   body.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `Result` containing `reqwest::Response`.
     pub async fn debug(
         &self,
         method: HttpMethod,
@@ -736,6 +698,7 @@ impl LoadTestRunner {
     ) -> WorkerResult {
         let start = Instant::now();
         let res = self.client.execute(req).await;
+        let status_code = res.as_ref().ok().map(|r| r.status());
         let res = match res {
             Ok(r) => r.error_for_status().map_err(anyhow::Error::from),
             Err(e) => Err(e.into()),
@@ -747,21 +710,30 @@ impl LoadTestRunner {
                     use futures::StreamExt;
                     let mut stream = resp.bytes_stream();
                     while let Some(chunk) = stream.next().await {
-                        if chunk.is_err() {
+                        if let Err(e) = chunk {
                             return WorkerResult::StatsOnly {
                                 success: false,
                                 duration: start.elapsed(),
+                                iteration,
+                                status_code,
+                                error: Some(e.to_string()),
                             };
                         }
                     }
                     WorkerResult::StatsOnly {
                         success: true,
                         duration: start.elapsed(),
+                        iteration,
+                        status_code,
+                        error: None,
                     }
                 }
-                Err(_) => WorkerResult::StatsOnly {
+                Err(e) => WorkerResult::StatsOnly {
                     success: false,
                     duration,
+                    iteration,
+                    status_code,
+                    error: Some(e.to_string()),
                 },
             }
         } else {
@@ -853,7 +825,7 @@ impl LoadTestRunner {
         output_dir: Option<&Path>,
     ) -> Result<LoadTestResult>
     where
-        F: Fn(&LoadTestResult),
+        F: Fn(LoadTestEvent),
     {
         let mut result = LoadTestResult::new();
         if let Some(output_dir) = output_dir {
@@ -867,8 +839,27 @@ impl LoadTestRunner {
         let mut file_tasks = JoinSet::new();
         while let Some(worker_res) = rx.recv().await {
             result.completed += 1;
+            let mut req_result = RequestResult {
+                iteration: 0,
+                duration: Duration::default(),
+                success: false,
+                status_code: None,
+                error: None,
+            };
             match worker_res {
-                WorkerResult::StatsOnly { success, duration } => {
+                WorkerResult::StatsOnly {
+                    success,
+                    duration,
+                    iteration,
+                    status_code,
+                    error,
+                } => {
+                    req_result.iteration = iteration;
+                    req_result.duration = duration;
+                    req_result.success = success;
+                    req_result.status_code = status_code;
+                    req_result.error = error;
+
                     if success {
                         result.success += 1;
                         if self.stats == Stats::All || self.stats == Stats::Success {
@@ -886,54 +877,66 @@ impl LoadTestRunner {
                     duration,
                     iteration,
                     base_file_name,
-                } => match res {
-                    Ok(response) => {
-                        result.success += 1;
-                        if self.stats == Stats::All || self.stats == Stats::Success {
-                            Self::update_stats(&mut result, duration)
+                } => {
+                    req_result.iteration = iteration;
+                    req_result.duration = duration;
+                    match res {
+                        Ok(response) => {
+                            req_result.success = true;
+                            req_result.status_code = Some(response.status);
+                            result.success += 1;
+                            if self.stats == Stats::All || self.stats == Stats::Success {
+                                Self::update_stats(&mut result, duration)
+                            }
+                            if let Some(output_dir) = &output_dir {
+                                let output_dir = output_dir.clone();
+                                let base_file_name = base_file_name.clone();
+                                file_tasks.spawn(async move {
+                                    let output_file = Self::get_output_file(
+                                        requests,
+                                        &output_dir,
+                                        iteration + 1,
+                                        base_file_name.as_deref(),
+                                        true,
+                                    );
+                                    let _ = Self::write_success_output_file(
+                                        output_file,
+                                        response,
+                                        duration,
+                                    )
+                                    .await;
+                                });
+                            }
                         }
-                        if let Some(output_dir) = &output_dir {
-                            let output_dir = output_dir.clone();
-                            let base_file_name = base_file_name.clone();
-                            file_tasks.spawn(async move {
-                                let output_file = Self::get_output_file(
-                                    requests,
-                                    &output_dir,
-                                    iteration + 1,
-                                    base_file_name.as_deref(),
-                                    true,
-                                );
-                                let _ = Self::write_success_output_file(
-                                    output_file,
-                                    response,
-                                    duration,
-                                )
-                                .await;
-                            });
+                        Err(error) => {
+                            req_result.success = false;
+                            req_result.error = Some(error.to_string());
+                            result.failures += 1;
+                            if self.stats == Stats::All || self.stats == Stats::Error {
+                                Self::update_stats(&mut result, duration)
+                            }
+                            if let Some(output_dir) = &output_dir {
+                                let output_dir = output_dir.clone();
+                                let base_file_name = base_file_name.clone();
+                                file_tasks.spawn(async move {
+                                    let output_file = Self::get_output_file(
+                                        requests,
+                                        &output_dir,
+                                        iteration + 1,
+                                        base_file_name.as_deref(),
+                                        false,
+                                    );
+                                    let _ =
+                                        Self::write_failure_output_file(output_file, error).await;
+                                });
+                            }
                         }
                     }
-                    Err(error) => {
-                        result.failures += 1;
-                        if self.stats == Stats::All || self.stats == Stats::Error {
-                            Self::update_stats(&mut result, duration)
-                        }
-                        if let Some(output_dir) = &output_dir {
-                            let output_dir = output_dir.clone();
-                            let base_file_name = base_file_name.clone();
-                            file_tasks.spawn(async move {
-                                let output_file = Self::get_output_file(
-                                    requests,
-                                    &output_dir,
-                                    iteration + 1,
-                                    base_file_name.as_deref(),
-                                    false,
-                                );
-                                let _ = Self::write_failure_output_file(output_file, error).await;
-                            });
-                        }
-                    }
-                },
+                }
             }
+
+            in_progress(LoadTestEvent::RequestFinished(req_result));
+
             if last_update.elapsed() >= update_interval {
                 result.elapsed = test_time.elapsed();
                 let elapsed_secs = result.elapsed.as_secs_f64();
@@ -946,7 +949,7 @@ impl LoadTestRunner {
                         (result.failures as f64 / result.completed as f64) * 100.0;
                 }
                 result.update_percentiles();
-                in_progress(&result);
+                in_progress(LoadTestEvent::ProgressUpdate(&result));
                 last_update = Instant::now();
             }
         }
@@ -960,7 +963,7 @@ impl LoadTestRunner {
             result.failure_rate = (result.failures as f64 / result.completed as f64) * 100.0;
         }
         result.update_percentiles();
-        in_progress(&result);
+        in_progress(LoadTestEvent::ProgressUpdate(&result));
         // Wait for all file writing tasks to complete.
         while file_tasks.join_next().await.is_some() {}
         result.elapsed = test_time.elapsed();

@@ -1856,8 +1856,10 @@ async fn test_ui_debouncing() {
     let callback_count = Arc::new(AtomicU32::new(0));
     let cb = Arc::clone(&callback_count);
     let result = runner
-        .run(HttpMethod::Get, None, None, None, move |_| {
-            cb.fetch_add(1, Ordering::SeqCst);
+        .run(HttpMethod::Get, None, None, None, move |event| {
+            if let load_rs::LoadTestEvent::ProgressUpdate(_) = event {
+                cb.fetch_add(1, Ordering::SeqCst);
+            }
         })
         .await
         .unwrap();
@@ -1928,4 +1930,33 @@ async fn test_user_agent() {
 
     let body = resp.text().await.unwrap();
     assert!(body.contains("\"user-agent\":\"custom-agent/1.0\""));
+}
+
+#[tokio::test]
+async fn test_run_with_generator() {
+    let server = run_perf_server().await.unwrap();
+    let url = format!("http://{}", server.addr);
+
+    let runner = LoadTestRunner::new(&url, 5, 2, Stats::All, None, None, None, false, None, None)
+        .await
+        .unwrap();
+
+    let result = runner
+        .run_with_generator(
+            move |iteration: u64| {
+                let req = reqwest::Client::new()
+                    .get(&url)
+                    .header("X-Iteration", iteration.to_string())
+                    .build()?;
+                Ok((req, None))
+            },
+            None,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.completed, 5);
+    assert_eq!(result.success, 5);
+    assert_eq!(result.failures, 0);
 }

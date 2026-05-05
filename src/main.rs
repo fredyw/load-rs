@@ -192,9 +192,11 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 data_dir,
                 args.order,
                 args.output_dir.as_deref(),
-                |result| {
-                    pb.set_message(format_progress_message(args, result));
-                    pb.set_position(result.completed as u64);
+                |event| {
+                    if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
+                        pb.set_message(format_progress_message(args, result));
+                        pb.set_position(result.completed as u64);
+                    }
                 },
             )
             .await?
@@ -205,9 +207,11 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 manifest_file,
                 args.order,
                 args.output_dir.as_deref(),
-                |result| {
-                    pb.set_message(format_progress_message(args, result));
-                    pb.set_position(result.completed as u64);
+                |event| {
+                    if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
+                        pb.set_message(format_progress_message(args, result));
+                        pb.set_position(result.completed as u64);
+                    }
                 },
             )
             .await?
@@ -218,9 +222,11 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                 Some(to_header_map(&args.header)?),
                 Some(to_body(args)),
                 args.output_dir.as_deref(),
-                |result| {
-                    pb.set_message(format_progress_message(args, result));
-                    pb.set_position(result.completed as u64);
+                |event| {
+                    if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
+                        pb.set_message(format_progress_message(args, result));
+                        pb.set_position(result.completed as u64);
+                    }
                 },
             )
             .await?
