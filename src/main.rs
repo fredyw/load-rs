@@ -76,7 +76,7 @@ struct Args {
     debug: bool,
 
     /// Specifies which requests to include in the statistics.
-    #[arg(short = 's', long, default_value = "success")]
+    #[arg(short = 's', long, default_value = "all")]
     stats: Stats,
 
     /// Request timeout in seconds.
@@ -156,7 +156,7 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
             "  Total: {}\n",
             "  Success: {} {}\n",
             "  Failures: {} {}\n\n",
-            "{} (Filter: {}):\n",
+            "{}:\n",
             "  Avg: {}\n",
             "  Min: {}\n",
             "  Max: {}\n",
@@ -176,11 +176,10 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
         style(format!("({:.1}%)", result.success_rate)).green(),
         style(result.failures).red(),
         style(format!("({:.1}%)", result.failure_rate)).red(),
-        style("Latency").bold(),
         match args.stats {
-            load_rs::Stats::Success => style(args.stats).green(),
-            load_rs::Stats::Error => style(args.stats).red(),
-            load_rs::Stats::All => style(args.stats).blue(),
+            load_rs::Stats::Success => style("Latency (Successful Requests)").bold().green(),
+            load_rs::Stats::Error => style("Latency (Failed Requests)").bold().red(),
+            load_rs::Stats::All => style("Latency (All Requests)").bold().blue(),
         },
         style(format_duration(result.avg, args.unit)).yellow(),
         style(format_duration(result.min, args.unit)).yellow(),
@@ -273,12 +272,11 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
     );
 
     println!(
-        "\n{} (Filter: {}):",
-        style("Latency").bold(),
+        "\n{}:",
         match args.stats {
-            load_rs::Stats::Success => style(args.stats).green(),
-            load_rs::Stats::Error => style(args.stats).red(),
-            load_rs::Stats::All => style(args.stats).blue(),
+            load_rs::Stats::Success => style("Latency (Successful Requests)").bold().green(),
+            load_rs::Stats::Error => style("Latency (Failed Requests)").bold().red(),
+            load_rs::Stats::All => style("Latency (All Requests)").bold().blue(),
         }
     );
     println!(

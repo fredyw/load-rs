@@ -52,7 +52,7 @@ impl LoadTestRunnerBuilder {
                 url: url.into(),
                 requests,
                 concurrency,
-                stats: Stats::Success,
+                stats: Stats::All,
                 ca_cert: None,
                 cert: None,
                 key: None,

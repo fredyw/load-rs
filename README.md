@@ -57,7 +57,7 @@ Options:
   -O, --order <ORDER>                  Order to process files from --data-dir or --manifest-file [default: sequential]
   -o, --output-dir <OUTPUT_DIR>        Directory to save responses to
   -G, --debug                          Performs a single request and dumps the response
-  -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: success]
+  -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: all]
   -t, --timeout <TIMEOUT>              Request timeout in seconds
   -A, --user-agent <USER_AGENT>        Custom user agent
   -p, --proxy <PROXY>                  Proxy server URL
@@ -121,9 +121,9 @@ either the `--data-dir` or `--manifest-file` option. The following values are su
 The `s` or `--stats` option allows you to control which requests are included in the statistics. The following
 values are supported:
 
-- `success` (default): Only include successful requests in the statistics.
+- `success`: Only include successful requests in the statistics.
 - `error`: Only include failed requests in the statistics.
-- `all`: Include all requests (successful and failed) in the statistics.
+- `all` (default): Include all requests (successful and failed) in the statistics.
 
 #### Timeout
 
@@ -233,7 +233,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize the runner using the builder pattern
     let runner = LoadTestRunner::builder(url, requests, concurrency)
-        .stats(Stats::Success)
+        .stats(Stats::All)
         .timeout(30)
         .build()
         .await?;
@@ -279,7 +279,7 @@ use reqwest::{Client, Method};
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let runner = LoadTestRunner::builder("http://localhost:8080", 1000, 50)
-        .stats(Stats::Success)
+        .stats(Stats::All)
         .build()
         .await?;
 
