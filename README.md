@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/fredyw/load-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/fredyw/load-rs/actions/workflows/ci.yml)
 
-A simple load testing tool written in Rust.
+A performance-oriented HTTP load testing library and CLI tool written in Rust.
 
 ![Demo](demo.gif)
 
