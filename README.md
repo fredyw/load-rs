@@ -242,9 +242,9 @@ To install `load-rs`, you can use the following command.
 
 ### Testing
 
-To run the tests, you can use the following command.
+To run the tests, including formatting and linting checks, you can use the following command:
 
-```
+```bash
 ./test.sh
 ```
 

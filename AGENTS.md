@@ -15,10 +15,7 @@ Before submitting any change, ensure all tests pass:
 
 ## 2. Coding Standards
 - **Idiomatic Rust**: Follow standard Rust idioms and best practices.
-- **Check**: Ensure your code passes formatting and linting checks.
-  ```bash
-  ./check.sh
-  ```
+- **Verification**: Running `./test.sh` automatically performs formatting and linting checks before running tests.
 - **Fix**: Use the provided script to automatically fix formatting and common clippy lints.
   ```bash
   ./fix.sh

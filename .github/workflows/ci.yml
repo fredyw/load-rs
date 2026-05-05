@@ -30,8 +30,5 @@ jobs:
       - name: Build
         run: ./build.sh
 
-      - name: Check
-        run: ./check.sh
-
       - name: Test
         run: ./test.sh
