@@ -280,6 +280,19 @@ To run the tests, including formatting and linting checks, you can use the follo
 ./test.sh
 ```
 
+### Releasing
+
+To create a new release, use the provided `release.sh` script:
+
+```bash
+./release.sh <version>
+```
+
+Example:
+```bash
+./release.sh 0.3.0
+```
+
 ## Library Usage
 
 `load-rs` can be used as a library in your own Rust projects. Add it to your `Cargo.toml`:
