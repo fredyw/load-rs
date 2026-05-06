@@ -72,14 +72,15 @@ case "$ARCH" in
     ;;
 esac
 
-if [[ "$PLATFORM" == "macos" && "$ARCH_NAME" == "x86_64" ]]; then
-  ARTIFACT_NAME="load-rs-macos-x86_64"
-elif [[ "$PLATFORM" == "macos" && "$ARCH_NAME" == "arm64" ]]; then
+if [[ "$PLATFORM" == "macos" && "$ARCH_NAME" == "arm64" ]]; then
   ARTIFACT_NAME="load-rs-macos-arm64"
 elif [[ "$PLATFORM" == "linux" && "$ARCH_NAME" == "x86_64" ]]; then
   ARTIFACT_NAME="load-rs-linux-x86_64"
 else
   echo "Error: No prebuilt binary found for $PLATFORM-$ARCH_NAME."
+  if [[ "$PLATFORM" == "macos" && "$ARCH_NAME" == "x86_64" ]]; then
+    echo "Intel-based Macs are not supported with prebuilt binaries."
+  fi
   echo "Try installing from source: ./install.sh --source"
   exit 1
 fi
