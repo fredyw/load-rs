@@ -75,9 +75,9 @@ struct Args {
     #[arg(short = 'O', long, default_value = "sequential", requires = "data_dir")]
     order: Order,
 
-    /// Directory to save responses to.
-    #[arg(short = 'o', long = "output-dir")]
-    output_dir: Option<PathBuf>,
+    /// File to save responses to (JSON Lines format).
+    #[arg(short = 'o', long = "output")]
+    output: Option<PathBuf>,
 
     /// Specifies what to save in the response output.
     #[arg(short = 'S', long = "save-mode", default_value = "all")]
@@ -224,7 +224,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                     Some(to_header_map(&args.header)?),
                     data_dir,
                     args.order,
-                    args.output_dir.as_deref(),
+                    args.output.as_deref(),
                     |_| {},
                 )
                 .await?
@@ -234,7 +234,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                     args.method,
                     manifest_file,
                     args.order,
-                    args.output_dir.as_deref(),
+                    args.output.as_deref(),
                     |_| {},
                 )
                 .await?
@@ -244,7 +244,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                     args.method,
                     Some(to_header_map(&args.header)?),
                     Some(to_body(args)),
-                    args.output_dir.as_deref(),
+                    args.output.as_deref(),
                     |_| {},
                 )
                 .await?
@@ -258,7 +258,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                     Some(to_header_map(&args.header)?),
                     data_dir,
                     args.order,
-                    args.output_dir.as_deref(),
+                    args.output.as_deref(),
                     |event| {
                         if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
                             pb.set_message(format_progress_message(args, result));
@@ -273,7 +273,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                     args.method,
                     manifest_file,
                     args.order,
-                    args.output_dir.as_deref(),
+                    args.output.as_deref(),
                     |event| {
                         if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
                             pb.set_message(format_progress_message(args, result));
@@ -288,7 +288,7 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
                     args.method,
                     Some(to_header_map(&args.header)?),
                     Some(to_body(args)),
-                    args.output_dir.as_deref(),
+                    args.output.as_deref(),
                     |event| {
                         if let load_rs::LoadTestEvent::ProgressUpdate(result) = event {
                             pb.set_message(format_progress_message(args, result));

@@ -1,7 +1,6 @@
 use anyhow::Result;
 use assert_cmd::Command;
 use predicates::prelude::predicate;
-use std::path::PathBuf;
 
 #[test]
 fn run_get() -> Result<()> {
@@ -450,10 +449,9 @@ fn debug_data_dir_random() -> Result<()> {
 
 #[test]
 fn run_save_responses() -> Result<()> {
-    let dir = std::env::temp_dir().join("load-rs-cli1");
-    let output_dir: PathBuf = dir.clone();
-    if output_dir.exists() {
-        std::fs::remove_dir_all(&output_dir).unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-cli1.jsonl");
+    if output_file.exists() {
+        std::fs::remove_file(&output_file).unwrap();
     }
     let mut cmd = Command::cargo_bin("load-rs")?;
     cmd.args([
@@ -468,15 +466,14 @@ fn run_save_responses() -> Result<()> {
         "-d",
         "{\"message\":\"Hello, world!\"}",
         "-o",
-        dir.to_str().unwrap(),
+        output_file.to_str().unwrap(),
         "https://mockhttp.org/post",
     ]);
 
     cmd.assert().success();
 
-    let jsonl_path = dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = std::fs::read_to_string(jsonl_path).unwrap();
+    assert!(output_file.exists());
+    let content = std::fs::read_to_string(&output_file).unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 
@@ -485,10 +482,9 @@ fn run_save_responses() -> Result<()> {
 
 #[test]
 fn run_data_dir_save_responses() -> Result<()> {
-    let dir = std::env::temp_dir().join("load-rs-cli2");
-    let output_dir: PathBuf = dir.clone();
-    if output_dir.exists() {
-        std::fs::remove_dir_all(&output_dir).unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-cli2.jsonl");
+    if output_file.exists() {
+        std::fs::remove_file(&output_file).unwrap();
     }
     let mut cmd = Command::cargo_bin("load-rs")?;
     cmd.args([
@@ -505,15 +501,14 @@ fn run_data_dir_save_responses() -> Result<()> {
         "-O",
         "sequential",
         "-o",
-        dir.to_str().unwrap(),
+        output_file.to_str().unwrap(),
         "https://mockhttp.org/post",
     ]);
 
     cmd.assert().success();
 
-    let jsonl_path = dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = std::fs::read_to_string(jsonl_path).unwrap();
+    assert!(output_file.exists());
+    let content = std::fs::read_to_string(&output_file).unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 
@@ -522,10 +517,9 @@ fn run_data_dir_save_responses() -> Result<()> {
 
 #[test]
 fn run_manifest_save_responses() -> Result<()> {
-    let dir = std::env::temp_dir().join("load-rs-cli3");
-    let output_dir: PathBuf = dir.clone();
-    if output_dir.exists() {
-        std::fs::remove_dir_all(&output_dir).unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-cli3.jsonl");
+    if output_file.exists() {
+        std::fs::remove_file(&output_file).unwrap();
     }
     let mut cmd = Command::cargo_bin("load-rs")?;
     cmd.args([
@@ -540,15 +534,14 @@ fn run_manifest_save_responses() -> Result<()> {
         "-O",
         "sequential",
         "-o",
-        dir.to_str().unwrap(),
+        output_file.to_str().unwrap(),
         "https://mockhttp.org/post",
     ]);
 
     cmd.assert().success();
 
-    let jsonl_path = dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = std::fs::read_to_string(jsonl_path).unwrap();
+    assert!(output_file.exists());
+    let content = std::fs::read_to_string(&output_file).unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 

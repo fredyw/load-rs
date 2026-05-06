@@ -8,9 +8,9 @@ mod common;
 
 #[tokio::test]
 async fn run_success_save_responses() {
-    let output_dir = std::env::temp_dir().join("load-rs-lib1");
-    if output_dir.exists() {
-        fs::remove_dir_all(&output_dir).await.unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-lib1.jsonl");
+    if output_file.exists() {
+        fs::remove_file(&output_file).await.unwrap();
     }
 
     let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
@@ -26,25 +26,24 @@ async fn run_success_save_responses() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            Some(&output_dir),
+            Some(&output_file),
             |_| {},
         )
         .await
         .unwrap();
 
     assert_eq!(result.success, 3);
-    let jsonl_path = output_dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    assert!(output_file.exists());
+    let content = fs::read_to_string(&output_file).await.unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
 async fn run_failure_save_responses() {
-    let output_dir = std::env::temp_dir().join("load-rs-lib2");
-    if output_dir.exists() {
-        fs::remove_dir_all(&output_dir).await.unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-lib2.jsonl");
+    if output_file.exists() {
+        fs::remove_file(&output_file).await.unwrap();
     }
 
     let runner = LoadTestRunner::builder("https://mockhttp.org/get", 3, 2)
@@ -60,25 +59,24 @@ async fn run_failure_save_responses() {
             HttpMethod::Post,
             Some(headers),
             Some(Data("{\"message\": \"hello\"}".into())),
-            Some(&output_dir),
+            Some(&output_file),
             |_| {},
         )
         .await
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    let jsonl_path = output_dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    assert!(output_file.exists());
+    let content = fs::read_to_string(&output_file).await.unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
 async fn run_from_dir_success_save_responses() {
-    let output_dir = std::env::temp_dir().join("load-rs-lib3");
-    if output_dir.exists() {
-        fs::remove_dir_all(&output_dir).await.unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-lib3.jsonl");
+    if output_file.exists() {
+        fs::remove_file(&output_file).await.unwrap();
     }
 
     let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
@@ -95,25 +93,24 @@ async fn run_from_dir_success_save_responses() {
             Some(headers),
             Path::new("tests/test_requests"),
             Order::Sequential,
-            Some(&output_dir),
+            Some(&output_file),
             |_| {},
         )
         .await
         .unwrap();
 
     assert_eq!(result.success, 3);
-    let jsonl_path = output_dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    assert!(output_file.exists());
+    let content = fs::read_to_string(&output_file).await.unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
 async fn run_from_dir_failure_save_responses() {
-    let output_dir = std::env::temp_dir().join("load-rs-lib4");
-    if output_dir.exists() {
-        fs::remove_dir_all(&output_dir).await.unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-lib4.jsonl");
+    if output_file.exists() {
+        fs::remove_file(&output_file).await.unwrap();
     }
 
     let runner = LoadTestRunner::builder("https://mockhttp.org/get", 3, 2)
@@ -130,25 +127,24 @@ async fn run_from_dir_failure_save_responses() {
             Some(headers),
             Path::new("tests/test_requests"),
             Order::Sequential,
-            Some(&output_dir),
+            Some(&output_file),
             |_| {},
         )
         .await
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    let jsonl_path = output_dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    assert!(output_file.exists());
+    let content = fs::read_to_string(&output_file).await.unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
 async fn run_from_manifest_success_save_responses() {
-    let output_dir = std::env::temp_dir().join("load-rs-lib5");
-    if output_dir.exists() {
-        fs::remove_dir_all(&output_dir).await.unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-lib5.jsonl");
+    if output_file.exists() {
+        fs::remove_file(&output_file).await.unwrap();
     }
 
     let runner = LoadTestRunner::builder("https://mockhttp.org/post", 3, 2)
@@ -162,25 +158,24 @@ async fn run_from_manifest_success_save_responses() {
             HttpMethod::Post,
             Path::new("tests/test_manifests/requests.jsonl"),
             Order::Sequential,
-            Some(&output_dir),
+            Some(&output_file),
             |_| {},
         )
         .await
         .unwrap();
 
     assert_eq!(result.success, 3);
-    let jsonl_path = output_dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    assert!(output_file.exists());
+    let content = fs::read_to_string(&output_file).await.unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 }
 
 #[tokio::test]
 async fn run_from_manifest_failure_save_responses() {
-    let output_dir = std::env::temp_dir().join("load-rs-lib6");
-    if output_dir.exists() {
-        fs::remove_dir_all(&output_dir).await.unwrap();
+    let output_file = std::env::temp_dir().join("load-rs-lib6.jsonl");
+    if output_file.exists() {
+        fs::remove_file(&output_file).await.unwrap();
     }
 
     let runner = LoadTestRunner::builder("https://mockhttp.org/get", 3, 2)
@@ -194,16 +189,15 @@ async fn run_from_manifest_failure_save_responses() {
             HttpMethod::Post,
             Path::new("tests/test_manifests/requests.jsonl"),
             Order::Sequential,
-            Some(&output_dir),
+            Some(&output_file),
             |_| {},
         )
         .await
         .unwrap();
 
     assert_eq!(result.failures, 3);
-    let jsonl_path = output_dir.join("responses.jsonl");
-    assert!(jsonl_path.exists());
-    let content = fs::read_to_string(jsonl_path).await.unwrap();
+    assert!(output_file.exists());
+    let content = fs::read_to_string(&output_file).await.unwrap();
     let lines: Vec<_> = content.lines().collect();
     assert_eq!(lines.len(), 3);
 }

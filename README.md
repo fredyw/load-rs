@@ -96,7 +96,7 @@ Options:
   -k, --key <KEY>                      Private key file (PEM format)
   -I, --insecure                       Allows insecure connections by skipping TLS certificate verification
   -O, --order <ORDER>                  Order to process files from --data-dir or --manifest-file [default: sequential]
-  -o, --output-dir <OUTPUT_DIR>        Directory to save responses to
+  -o, --output <OUTPUT_FILE>           File to save responses to (JSON Lines format)
   -S, --save-mode <SAVE_MODE>          Specifies what to save in the response output [default: all]
   -G, --debug                          Performs a single request and dumps the response
   -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: all]
@@ -113,9 +113,8 @@ Options:
 
 ### Output Files
 
-When the `-o` or `--output-dir` option is specified, `load-rs` will stream the response of each request
-to a single `responses.jsonl` file in the specified directory. This file uses the 
-[JSON Lines](https://jsonlines.org/) format.
+When the `-o` or `--output` option is specified, `load-rs` will stream the response of each request
+to the specified file in [JSON Lines](https://jsonlines.org/) format.
 
 Each record in the `responses.jsonl` file contains:
 
@@ -319,7 +318,7 @@ async fn main() -> anyhow::Result<()> {
         HttpMethod::Get,
         None, // headers
         None, // body
-        None, // output_dir
+        Some(std::path::Path::new("responses.jsonl")), // output_file
         |event| {
             // Handle real-time events
             match event {
@@ -377,7 +376,7 @@ async fn main() -> anyhow::Result<()> {
             // Return the request and an optional filename for saving the response
             Ok((req, None))
         },
-        None, // output_dir
+        Some(std::path::Path::new("responses.jsonl")), // output_file
         |_| {} // event callback
     ).await?;
 

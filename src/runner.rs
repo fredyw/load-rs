@@ -297,7 +297,7 @@ impl LoadTestRunner {
     /// # Parameters
     ///
     /// * `generator`: A request generator that implements the `RequestGenerator` trait.
-    /// * `output_dir`: Optional directory to save response data.
+    /// * `output_file`: Optional file path to save response data.
     /// * `in_progress`: A callback function that is invoked as the test progresses.
     ///
     /// # Returns
@@ -305,7 +305,7 @@ impl LoadTestRunner {
     pub async fn run_with_generator<G, T>(
         &self,
         generator: G,
-        output_dir: Option<&Path>,
+        output_file: Option<&Path>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -313,7 +313,7 @@ impl LoadTestRunner {
         T: Fn(LoadTestEvent),
     {
         let generator = Arc::new(generator);
-        let save_response = output_dir.is_some();
+        let save_response = output_file.is_some();
         let (tx, rx) = mpsc::channel(self.concurrency as usize);
         let runner = Arc::new(self.clone());
         let counter = Arc::new(AtomicU64::new(0));
@@ -373,7 +373,7 @@ impl LoadTestRunner {
             });
         }
         drop(tx);
-        self.process_results(rx, in_progress, output_dir).await
+        self.process_results(rx, in_progress, output_file).await
     }
 
     /// Executes the load test with the specified HTTP method, headers, and body.
@@ -383,7 +383,7 @@ impl LoadTestRunner {
     /// * `method`: HTTP method (GET, POST, etc.) to use.
     /// * `header`: Optional custom HTTP headers.
     /// * `body`: Optional request body.
-    /// * `output_dir`: Optional directory to save response data.
+    /// * `output_file`: Optional file path to save response data.
     /// * `in_progress`: A callback function that is invoked as the test progresses.
     ///
     /// # Returns
@@ -393,7 +393,7 @@ impl LoadTestRunner {
         method: HttpMethod,
         header: Option<HeaderMap>,
         body: Option<Body>,
-        output_dir: Option<&Path>,
+        output_file: Option<&Path>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -405,7 +405,7 @@ impl LoadTestRunner {
         let req = Arc::new(req);
         self.run_with_generator(
             move |_| Ok(((*req).try_clone().unwrap(), None)),
-            output_dir,
+            output_file,
             in_progress,
         )
         .await
@@ -438,7 +438,7 @@ impl LoadTestRunner {
     /// * `header`: Optional custom HTTP headers.
     /// * `data_dir`: Directory containing files to be used as request bodies.
     /// * `order`: Order in which to process files from the directory.
-    /// * `output_dir`: Optional directory to save response data.
+    /// * `output_file`: Optional file path to save response data.
     /// * `in_progress`: A callback function that is invoked as the test progresses.
     ///
     /// # Returns
@@ -449,7 +449,7 @@ impl LoadTestRunner {
         header: Option<HeaderMap>,
         data_dir: &Path,
         order: Order,
-        output_dir: Option<&Path>,
+        output_file: Option<&Path>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -491,7 +491,7 @@ impl LoadTestRunner {
                 let (req, name) = &reqs[index];
                 Ok((req.try_clone().unwrap(), name.clone()))
             },
-            output_dir,
+            output_file,
             in_progress,
         )
         .await
@@ -504,7 +504,7 @@ impl LoadTestRunner {
     /// * `method`: HTTP method (POST, PUT, etc.) to use.
     /// * `manifest_file`: Path to the manifest file.
     /// * `order`: Order in which to process requests from the manifest.
-    /// * `output_dir`: Optional directory to save response data.
+    /// * `output_file`: Optional file path to save response data.
     /// * `in_progress`: A callback function that is invoked as the test progresses.
     ///
     /// # Returns
@@ -514,7 +514,7 @@ impl LoadTestRunner {
         method: HttpMethod,
         manifest_file: &Path,
         order: Order,
-        output_dir: Option<&Path>,
+        output_file: Option<&Path>,
         in_progress: T,
     ) -> Result<LoadTestResult>
     where
@@ -564,7 +564,7 @@ impl LoadTestRunner {
                 let (req, id) = &reqs[index];
                 Ok((req.try_clone().unwrap(), id.as_ref().map(OsString::from)))
             },
-            output_dir,
+            output_file,
             in_progress,
         )
         .await
@@ -839,15 +839,16 @@ impl LoadTestRunner {
         &self,
         mut rx: mpsc::Receiver<WorkerResult>,
         in_progress: F,
-        output_dir: Option<&Path>,
+        output_file: Option<&Path>,
     ) -> Result<LoadTestResult>
     where
         F: Fn(LoadTestEvent),
     {
         let mut result = LoadTestResult::new();
-        let mut output_writer = if let Some(output_dir) = output_dir {
-            fs::create_dir_all(output_dir).await?;
-            let output_file = output_dir.join("responses.jsonl");
+        let mut output_writer = if let Some(output_file) = output_file {
+            if let Some(parent) = output_file.parent() {
+                fs::create_dir_all(parent).await?;
+            }
             Some(BufWriter::new(File::create(output_file).await?))
         } else {
             None
