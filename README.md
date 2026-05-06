@@ -6,6 +6,8 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/fredyw/load-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/fredyw/load-rs/actions/workflows/ci.yml)
+[![Publish](https://github.com/fredyw/load-rs/actions/workflows/publish.yml/badge.svg)](https://github.com/fredyw/load-rs/actions/workflows/publish.yml)
+[![Crates.io](https://img.shields.io/crates/v/load-rs.svg)](https://crates.io/crates/load-rs)
 
 A simple HTTP load testing library and CLI tool written in Rust.
 
@@ -285,7 +287,7 @@ To run the tests, including formatting and linting checks, you can use the follo
 
 ```toml
 [dependencies]
-load-rs = "0.1.0"
+load-rs = "VERSION" # Replace with the latest version from crates.io
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 ```
