@@ -1,11 +1,15 @@
 # load-rs
 
+<p align="left">
+  <img src="assets/logo.png" alt="load-rs logo" width="300px">
+</p>
+
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/fredyw/load-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/fredyw/load-rs/actions/workflows/ci.yml)
 
 A simple HTTP load testing library and CLI tool written in Rust.
 
-![Demo](demo.gif)
+![Demo](assets/demo.gif)
 
 ## Table of Contents
 
