@@ -104,6 +104,11 @@ echo "Installing to $INSTALL_DIR/$BINARY_NAME..."
 mv "$TEMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
 chmod +x "$INSTALL_DIR/$BINARY_NAME"
 
+# Remove macOS quarantine flag if applicable
+if [[ "$PLATFORM" == "macos" ]]; then
+  xattr -d com.apple.quarantine "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || true
+fi
+
 echo "Successfully installed $BINARY_NAME $LATEST_RELEASE!"
 
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
