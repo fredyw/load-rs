@@ -22,14 +22,13 @@ jobs:
       - name: Check if version is already published
         id: check_version
         run: |
-          VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)
+          VERSION=$(grep '^version =' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
           echo "Checking if load-rs version $VERSION is already on crates.io..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://crates.io/api/v1/crates/load-rs/$VERSION)
-          if [ "$STATUS" -eq 200 ]; then
+          if curl -sL https://crates.io/api/v1/crates/load-rs | grep -q "\"num\":\"$VERSION\""; then
             echo "Version $VERSION already exists on crates.io. Skipping publish step."
             echo "exists=true" >> $GITHUB_OUTPUT
           else
-            echo "Version $VERSION not found. Proceeding with publish."
+            echo "Version $VERSION not found on crates.io. Proceeding with publish."
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
