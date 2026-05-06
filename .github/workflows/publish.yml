@@ -22,9 +22,10 @@ jobs:
       - name: Check if version is already published
         id: check_version
         run: |
-          VERSION=$(grep '^version =' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
+          VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)
           echo "Checking if load-rs version $VERSION is already on crates.io..."
-          if curl -sL https://crates.io/api/v1/crates/load-rs | grep -q "\"num\":\"$VERSION\""; then
+          # crates.io API requires a User-Agent header
+          if curl -sL -H "User-Agent: load-rs-ci (github.com/fredyw/load-rs)" https://crates.io/api/v1/crates/load-rs | grep -q "\"num\":\"$VERSION\""; then
             echo "Version $VERSION already exists on crates.io. Skipping publish step."
             echo "exists=true" >> $GITHUB_OUTPUT
           else
