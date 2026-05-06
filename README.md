@@ -13,6 +13,7 @@ A simple HTTP load testing library and CLI tool written in Rust.
 
 ## Table of Contents
 
+- [Installation](#installation)
 - [Usage](#usage)
   - [Command Line Options](#command-line-options)
   - [Output Files](#output-files)
@@ -26,18 +27,50 @@ A simple HTTP load testing library and CLI tool written in Rust.
   - [Unit](#unit)
   - [Debugging](#debugging)
   - [Examples](#examples)
-- [Building](#building)
-- [Installing](#installing)
-- [Testing](#testing)
 - [Library Usage](#library-usage)
   - [Basic Usage](#basic-usage)
   - [Custom Request Generator](#custom-request-generator)
+- [Development](#development)
+  - [Building](#building)
+  - [Testing](#testing)
 - [Contributing](#contributing)
 - [License](#license)
 
-### Usage
+## Installation
 
-#### Command Line Options
+### From Prebuilt Binaries
+
+**Linux & macOS:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fredyw/load-rs/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/fredyw/load-rs/main/install.ps1 | iex
+```
+
+### From crates.io
+
+If you have Rust installed, you can install `load-rs` directly from [crates.io](https://crates.io/crates/load-rs):
+
+```bash
+cargo install load-rs
+```
+
+### From Source
+
+```bash
+git clone https://github.com/fredyw/load-rs.git
+cd load-rs
+./install.sh --source
+```
+
+## Usage
+
+### Command Line Options
 
 ```
 Usage: load-rs [OPTIONS] --requests <REQUESTS> --concurrency <CONCURRENCY> <URL>
@@ -76,7 +109,7 @@ Options:
   -V, --version                        Print version
 ```
 
-#### Output Files
+### Output Files
 
 When the `-o` or `--output-dir` option is specified, `load-rs` will stream the response of each request
 to a single `responses.jsonl` file in the specified directory. This file uses the 
@@ -99,7 +132,7 @@ You can control the granularity of the saved data using the `--save-mode` option
 - `headers`: Saves status and headers only (no body).
 - `body`: Saves status and body only (no headers).
 
-#### Request Manifest
+### Request Manifest
 
 The manifest file is a [JSON Lines](https://jsonlines.org/) file where each line is a JSON object
 that defines a request. The following fields are supported:
@@ -121,7 +154,7 @@ that defines a request. The following fields are supported:
 {"headers": {"Content-Type": "application/octet-stream"}, "binary_body": "SGVsbG8gd29ybGQ="}
 ```
 
-#### Order
+### Order
 
 The `-O` or `--order` option allows you to control the order in which requests are sent when using
 either the `--data-dir` or `--manifest-file` option. The following values are supported:
@@ -129,7 +162,7 @@ either the `--data-dir` or `--manifest-file` option. The following values are su
 - `sequential` (default): Requests are sent in the order they appear in the directory or manifest file.
 - `random`: Requests are sent in a random order.
 
-#### TLS
+### TLS
 
 `load-rs` supports several options for configuring TLS:
 
@@ -138,7 +171,7 @@ either the `--data-dir` or `--manifest-file` option. The following values are su
 - `-k, --key <KEY>`: Use a private key file (PEM format) for the client certificate.
 - `-I, --insecure`: Allows insecure connections by skipping TLS certificate verification.
 
-#### Statistics
+### Statistics
 
 The `s` or `--stats` option allows you to control which requests are included in the statistics. The following
 values are supported:
@@ -157,19 +190,19 @@ If both `--requests` and `--duration` are provided, the test will stop whichever
 
 The `-r` or `--rate` flag allows you to limit the number of requests per second (RPS). This is useful for simulating steady traffic or avoiding overwhelming the target server.
 
-#### Timeout
+### Timeout
 
 The `-t` or `--timeout` option allows you to set a timeout in seconds for each request. By default, requests do not time out.
 
-#### User Agent
+### User Agent
 
 The `-A` or `--user-agent` option allows you to set a custom user agent string for each request. By default, requests do not include a custom user agent.
 
-#### Proxy
+### Proxy
 
 The `-p` or `--proxy` option allows you to route requests through a proxy server.
 
-#### Unit
+### Unit
 
 The `-u` or `--unit` option allows you to configure the unit of measurement used in the output for duration and latencies. Supported values are `seconds` and `milliseconds`. By default, it is in `milliseconds`.
 
@@ -186,13 +219,13 @@ The `--disable-keepalive` flag disables HTTP keep-alive. By default, `load-rs` r
 
 The `--json` flag causes `load-rs` to output the final test results in a structured JSON format instead of the human-readable summary. This is ideal for CI/CD pipelines, automated benchmarking, or feeding the results into other tools for analysis.
 
-#### Debugging
+### Debugging
 
 The `-G` or `--debug` option can be used to perform a single request and dump the response to the console.
 This is useful for verifying that your requests are correct and that the server is responding as expected.
 When using this option, the `-n`, `-c`, and `-o` options are ignored.
 
-#### Examples
+### Examples
 
 **GET request**
 
@@ -224,25 +257,19 @@ load-rs -n 100 -c 10 -X POST -i /path/to/bodies http://localhost:8080
 load-rs -n 100 -c 10 -X POST -m /path/to/manifest.jsonl http://localhost:8080
 ```
 
+## Development
+
 ### Building
 
 To build the project, you need to have Rust installed. You can install it from [here](https://www.rust-lang.org/tools/install).
 
 Once you have Rust installed, you can build the project by running the following command:
 
-```
+```bash
 ./build.sh --release
 ```
 
 The binary will be located in `target/release/load-rs`.
-
-### Installing
-
-To install `load-rs`, you can use the following command.
-
-```
-./install.sh
-```
 
 ### Testing
 
@@ -252,18 +279,18 @@ To run the tests, including formatting and linting checks, you can use the follo
 ./test.sh
 ```
 
-### Library Usage
+## Library Usage
 
 `load-rs` can be used as a library in your own Rust projects. Add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-load-rs = { git = "https://github.com/fredyw/load-rs.git" }
+load-rs = "0.1.0"
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 ```
 
-#### Basic Usage
+### Basic Usage
 
 The following example shows how to run a simple GET load test:
 
@@ -315,7 +342,7 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-#### Custom Request Generator
+### Custom Request Generator
 
 For more complex scenarios, you can use a custom request generator to dynamically create requests (e.g., with unique IDs or timestamps in the body).
 
@@ -357,13 +384,13 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-### Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue.
 
 If you are an AI agent, please refer to [AGENTS.md](AGENTS.md) for specific guidelines.
 
 
-### License
+## License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
