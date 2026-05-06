@@ -35,6 +35,7 @@ A simple HTTP load testing library and CLI tool written in Rust.
 - [Development](#development)
   - [Building](#building)
   - [Testing](#testing)
+  - [Releasing](#releasing)
 - [Contributing](#contributing)
 - [License](#license)
 
