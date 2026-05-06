@@ -1,6 +1,6 @@
 [package]
 name = "load-rs"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 description = "A simple HTTP load testing library and CLI tool"
 license = "Apache-2.0"
