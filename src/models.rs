@@ -171,6 +171,21 @@ mod tests {
         assert!(res.p50 >= Duration::from_micros(200));
         assert!(res.p90 >= Duration::from_micros(300));
     }
+
+    #[test]
+    fn test_save_mode_from_str() {
+        assert_eq!(SaveMode::from_str("headers").unwrap(), SaveMode::Headers);
+        assert_eq!(SaveMode::from_str("BODY").unwrap(), SaveMode::Body);
+        assert_eq!(SaveMode::from_str("All").unwrap(), SaveMode::All);
+        assert!(SaveMode::from_str("invalid").is_err());
+    }
+
+    #[test]
+    fn test_save_mode_display() {
+        assert_eq!(format!("{}", SaveMode::Headers), "headers");
+        assert_eq!(format!("{}", SaveMode::Body), "body");
+        assert_eq!(format!("{}", SaveMode::All), "all");
+    }
 }
 
 /// Specifies the order in which to process request body files from a directory.
