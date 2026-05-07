@@ -30,9 +30,10 @@ if [ ! -f "Cargo.toml" ]; then
     exit 1
 fi
 
-# 4. Ensure git status is clean
-if [[ -n $(git status -s) ]]; then
-    echo -e "${RED}Error: Git working directory is not clean. Please commit or stash changes first.${NC}"
+# 4. Ensure git status is clean (ignoring Cargo.toml/lock if they only contain version updates)
+DIRTY_FILES=$(git status --porcelain | grep -vE "^( M|M ) (Cargo.toml|Cargo.lock)$" || true)
+if [[ -n "$DIRTY_FILES" ]]; then
+    echo -e "${RED}Error: Git working directory has uncommitted changes in files other than Cargo.toml/lock.${NC}"
     git status -s
     exit 1
 fi
@@ -71,14 +72,29 @@ fi
 echo "Updating Cargo.lock..."
 cargo check > /dev/null 2>&1
 
-# 9. Commit the version change
+# 9. Commit the version update if there are changes
 echo "Committing version update..."
 git add Cargo.toml Cargo.lock
-git commit -m "chore: release v$VERSION" -m "Automated version bump to v$VERSION and update of Cargo.lock."
+if ! git diff --cached --quiet; then
+    git commit -m "chore: release v$VERSION" -m "Automated version bump to v$VERSION and update of Cargo.lock."
+else
+    echo "No version changes to commit (Cargo.toml already at v$VERSION)."
+fi
 
 # 10. Create a git tag
-echo "Creating git tag v$VERSION..."
-git tag -a "v$VERSION" -m "v$VERSION"
+if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+    TAG_COMMIT=$(git rev-parse "v$VERSION")
+    HEAD_COMMIT=$(git rev-parse HEAD)
+    if [ "$TAG_COMMIT" != "$HEAD_COMMIT" ]; then
+        echo -e "${RED}Error: Tag v$VERSION already exists but points to a different commit ($TAG_COMMIT) than HEAD ($HEAD_COMMIT).${NC}"
+        echo "Please delete the tag manually if you want to recreate it: git tag -d v$VERSION"
+        exit 1
+    fi
+    echo -e "${YELLOW}Warning: Tag v$VERSION already exists on HEAD. Skipping tag creation.${NC}"
+else
+    echo "Creating git tag v$VERSION..."
+    git tag -a "v$VERSION" -m "v$VERSION"
+fi
 
 echo -e "${GREEN}Release v$VERSION prepared locally.${NC}"
 
