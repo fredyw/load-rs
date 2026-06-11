@@ -16,9 +16,12 @@ A simple HTTP load testing library and CLI tool written in Rust.
 ## Table of Contents
 
 - [Installation](#installation)
+  - [From Prebuilt Binaries](#from-prebuilt-binaries)
+  - [From crates.io](#from-cratesio)
+  - [From Source](#from-source)
+  - [Shell Completion](#shell-completion)
 - [Usage](#usage)
   - [Command Line Options](#command-line-options)
-  - [Shell Completion](#shell-completion)
   - [Output Files](#output-files)
   - [Request Manifest](#request-manifest)
   - [Order](#order)
@@ -70,6 +73,20 @@ cargo install load-rs
 git clone https://github.com/fredyw/load-rs.git
 cd load-rs
 ./install.sh --source
+```
+
+### Shell Completion
+
+Generate shell completion scripts for your favorite shell using the `--generate-completion` option.
+
+**Bash:**
+```bash
+source <(load-rs --generate-completion bash)
+```
+
+**Zsh:**
+```zsh
+source <(load-rs --generate-completion zsh)
 ```
 
 ## Usage
@@ -141,20 +158,6 @@ Options:
           Print help
   -V, --version
           Print version
-```
-
-### Shell Completion
-
-Generate shell completion scripts for your favorite shell using the `--generate-completion` option.
-
-**Bash:**
-```bash
-source <(load-rs --generate-completion bash)
-```
-
-**Zsh:**
-```zsh
-source <(load-rs --generate-completion zsh)
 ```
 
 ### Output Files
