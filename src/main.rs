@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use bytes::Bytes;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use load_rs::{Body, HttpMethod, LoadTestRunner, Order, SaveMode, Stats, Unit};
@@ -13,10 +13,15 @@ use std::str::FromStr;
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Target URL to send requests to.
-    url: String,
+    #[arg(required_unless_present = "generate_completion")]
+    url: Option<String>,
 
     /// Total number of requests to send.
-    #[arg(short = 'n', long, required_unless_present_any = ["duration", "debug"])]
+    #[arg(
+        short = 'n',
+        long,
+        required_unless_present_any = ["duration", "debug", "generate_completion"]
+    )]
     requests: Option<u32>,
 
     /// Maximum duration of the load test (e.g., 10s, 1m).
@@ -118,6 +123,10 @@ struct Args {
     /// Output results in JSON format.
     #[arg(short = 'j', long)]
     json: bool,
+
+    /// Generate shell completion script for the specified shell.
+    #[arg(long = "generate-completion", value_enum)]
+    generate_completion: Option<clap_complete::Shell>,
 }
 
 fn to_header_map(headers: &[String]) -> Result<HeaderMap> {
@@ -190,7 +199,7 @@ fn format_progress_message(args: &Args, result: &load_rs::LoadTestResult) -> Str
             "  P99: {}",
         ),
         style("Overview:").bold(),
-        style(&args.url).cyan().underlined(),
+        style(args.url.as_ref().unwrap()).cyan().underlined(),
         style(args.concurrency).yellow(),
         style(format!("{:.1}", result.rps)).cyan(),
         style(format_duration(result.elapsed, args.unit)).yellow(),
@@ -316,7 +325,10 @@ async fn run(runner: &LoadTestRunner, args: &Args) -> Result<()> {
     println!();
 
     println!("{}", style("Overview:").bold());
-    println!("  URL: {}", style(&args.url).cyan().underlined());
+    println!(
+        "  URL: {}",
+        style(args.url.as_ref().unwrap()).cyan().underlined()
+    );
     println!("  Concurrency: {}", style(args.concurrency).yellow());
     println!("  RPS: {}", style(format!("{:.1}", result.rps)).cyan());
     println!(
@@ -412,13 +424,22 @@ async fn debug(runner: &LoadTestRunner, args: &Args) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
+
+    if let Some(shell) = args.generate_completion {
+        let mut cmd = Args::command();
+        let name = cmd.get_name().to_string();
+        clap_complete::generate(shell, &mut cmd, name, &mut std::io::stdout());
+        return Ok(());
+    }
+
     let (requests, concurrency) = if args.debug {
         (1, 1)
     } else {
         (args.requests.unwrap_or(u32::MAX), args.concurrency)
     };
 
-    let mut builder = LoadTestRunner::builder(&args.url, requests, concurrency)
+    let url = args.url.as_ref().unwrap();
+    let mut builder = LoadTestRunner::builder(url, requests, concurrency)
         .stats(args.stats)
         .insecure(args.insecure)
         .quiet(args.quiet)

@@ -640,3 +640,23 @@ fn run_rate_limited() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_completion_bash() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args(["--generate-completion", "bash"]);
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("complete -F"));
+    Ok(())
+}
+
+#[test]
+fn test_completion_zsh() -> Result<()> {
+    let mut cmd = Command::cargo_bin("load-rs")?;
+    cmd.args(["--generate-completion", "zsh"]);
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("#compdef load-rs"));
+    Ok(())
+}

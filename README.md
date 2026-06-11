@@ -18,6 +18,7 @@ A simple HTTP load testing library and CLI tool written in Rust.
 - [Installation](#installation)
 - [Usage](#usage)
   - [Command Line Options](#command-line-options)
+  - [Shell Completion](#shell-completion)
   - [Output Files](#output-files)
   - [Request Manifest](#request-manifest)
   - [Order](#order)
@@ -76,40 +77,84 @@ cd load-rs
 ### Command Line Options
 
 ```
-Usage: load-rs [OPTIONS] --requests <REQUESTS> --concurrency <CONCURRENCY> <URL>
+Usage: load-rs [OPTIONS] [URL]
 
 Arguments:
-  <URL>  Target URL to send requests to
+  [URL]  Target URL to send requests to
 
 Options:
-  -n, --requests <REQUESTS>            Total number of requests to send
-  -z, --duration <DURATION>            Maximum duration of the load test (e.g., 10s, 1m)
-  -c, --concurrency <CONCURRENCY>      Number of concurrent requests to run at a time
-  -r, --rate <RATE>                    Requests per second (RPS) limit
-  -X, --method <METHOD>                HTTP method to use for the requests [default: get]
-  -H, --header <HEADER>                Custom HTTP header(s) in "key: value" format. Can be repeated
-  -d, --data <DATA>                    Request body as a string
-  -D, --data-file <DATA_FILE>          File to read the request body from
-  -i, --data-dir <DATA_DIR>            Directory of files to use as request bodies
-  -m, --manifest-file <MANIFEST_FILE>  Request manifest file (JSON Lines format)
-  -C, --cacert <CA_CERT>               Custom CA certificate file (PEM format)
-  -E, --cert <CERT>                    Public certificate file (PEM format)
-  -k, --key <KEY>                      Private key file (PEM format)
-  -I, --insecure                       Allows insecure connections by skipping TLS certificate verification
-  -O, --order <ORDER>                  Order to process files from --data-dir or --manifest-file [default: sequential]
-  -o, --output <OUTPUT_FILE>           File to save responses to (JSON Lines format)
-  -S, --save-mode <SAVE_MODE>          Specifies what to save in the response output [default: all]
-  -G, --debug                          Performs a single request and dumps the response
-  -s, --stats <STATS>                  Specifies which requests to include in the statistics [default: all]
-  -t, --timeout <TIMEOUT>              Request timeout in seconds
-  -A, --user-agent <USER_AGENT>        Custom user agent
-  -p, --proxy <PROXY>                  Proxy server URL
-  -u, --unit <UNIT>                    Unit of measurement (seconds or milliseconds) [default: milliseconds]
-  -q, --quiet                          Quiet mode: suppress progress updates
-  -K, --disable-keepalive              Disables HTTP keep-alive
-  -j, --json                           Output results in JSON format
-  -h, --help                           Print help
-  -V, --version                        Print version
+  -n, --requests <REQUESTS>
+          Total number of requests to send
+  -z, --duration <DURATION>
+          Maximum duration of the load test (e.g., 10s, 1m)
+  -c, --concurrency <CONCURRENCY>
+          Number of concurrent requests to run at a time [default: 10]
+  -r, --rate <RATE>
+          Requests per second (RPS) limit
+  -X, --method <METHOD>
+          HTTP method to use for the requests [default: get]
+  -H, --header <HEADER>
+          Custom HTTP header(s) in "key: value" format. Can be repeated
+  -d, --data <DATA>
+          Request body as a string
+  -D, --data-file <DATA_FILE>
+          File to read the request body from
+  -i, --data-dir <DATA_DIR>
+          Directory of files to use as request bodies
+  -m, --manifest-file <MANIFEST_FILE>
+          Request manifest file (JSON Lines format)
+  -C, --cacert <CA_CERT>
+          Custom CA certificate file (PEM format)
+  -E, --cert <CERT>
+          Public certificate file (PEM format)
+  -k, --key <KEY>
+          Private key file (PEM format)
+  -I, --insecure
+          Allows insecure connections by skipping TLS certificate verification
+  -O, --order <ORDER>
+          Order to process files from --data-dir or --manifest-file [default: sequential]
+  -o, --output <OUTPUT>
+          File to save responses to (JSON Lines format)
+  -S, --save-mode <SAVE_MODE>
+          Specifies what to save in the response output [default: all]
+  -G, --debug
+          Performs a single request and dumps the response
+  -s, --stats <STATS>
+          Specifies which requests to include in the statistics [default: all]
+  -t, --timeout <TIMEOUT>
+          Request timeout in seconds
+  -A, --user-agent <USER_AGENT>
+          Custom user agent
+  -p, --proxy <PROXY>
+          Proxy server URL
+  -u, --unit <UNIT>
+          Unit of measurement (seconds or milliseconds) [default: milliseconds]
+  -q, --quiet
+          Quiet mode: suppress progress updates
+  -K, --disable-keepalive
+          Disables HTTP keep-alive
+  -j, --json
+          Output results in JSON format
+      --generate-completion <GENERATE_COMPLETION>
+          Generate shell completion script for the specified shell [possible values: bash, elvish, fish, powershell, zsh]
+  -h, --help
+          Print help
+  -V, --version
+          Print version
+```
+
+### Shell Completion
+
+Generate shell completion scripts for your favorite shell using the `--generate-completion` option.
+
+**Bash:**
+```bash
+source <(load-rs --generate-completion bash)
+```
+
+**Zsh:**
+```zsh
+source <(load-rs --generate-completion zsh)
 ```
 
 ### Output Files
