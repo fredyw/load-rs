@@ -125,7 +125,7 @@ struct Args {
     json: bool,
 
     /// Generate shell completion script for the specified shell.
-    #[arg(long = "generate-completion", value_enum)]
+    #[arg(long = "generate-completion", value_name = "SH", value_enum)]
     generate_completion: Option<clap_complete::Shell>,
 }
 

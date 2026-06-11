@@ -152,7 +152,7 @@ Options:
           Disables HTTP keep-alive
   -j, --json
           Output results in JSON format
-      --generate-completion <GENERATE_COMPLETION>
+      --generate-completion <SH>
           Generate shell completion script for the specified shell [possible values: bash, elvish, fish, powershell, zsh]
   -h, --help
           Print help
